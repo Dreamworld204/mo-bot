@@ -1,4 +1,7 @@
 #msg_deal.py
+import http.client
+import hashlib
+import sqlite3
 import urllib
 from urllib import request, error
 import time
@@ -7,18 +10,68 @@ import json
 import math
 import socket
 import os
+import traceback
+import random
+import requests
 
 import mlib as lib
 import ybtext
 
 class Message:
     date_jieqi = {}
+    oldimg_lst = {}
+    lastimgfile = {}
+    cur_send_user = ""
 
     def __init__(self):
         if os.path.exists('jieqi.json'):
             self.date_jieqi = json.load(open('jieqi.json'))
         else:
             json.dump(self.date_jieqi, open('jieqi.json', 'w'))
+        if os.path.exists('tags.json'):
+            self.map_tags = json.load(open('tags.json', encoding='utf-8'))
+            self.map_tags.update(ybtext.map_tags)
+            lib.log(self.map_tags)
+        else:
+            json.dump(ybtext.map_tags, open(
+                'tags.json', 'w', encoding='utf-8'))
+        # self.pic_path = "/home/sunjianpei/apache-tomcat-9.0.65/webapps/sumi/pic/"
+        self.pic_path = "./static/pic/"
+        lib.check_path(os.path.join(self.pic_path , "sample"))
+        lib.check_path("./data/")
+
+        db_exists = os.path.exists(os.path.join("data", "image.db"))
+        db_conn = sqlite3.connect(os.path.join("data", "image.db"))
+        db = db_conn.cursor()
+
+        if not db_exists:
+            db.execute(
+                '''CREATE TABLE if not EXISTS sendlog(
+                filename TEXT ,
+                type TEXT,
+                send TEXT,
+                dt TEXT
+                )''')
+            db.execute(
+                '''CREATE TABLE if not EXISTS userfavor(
+                user INT,
+                tag TEXT,
+                times INT
+                )''')
+        else:
+            startdate = time.strftime(
+                "%Y-%m-%d", time.localtime(time.time() - 30 * 24 * 3600))
+
+            tmplist = list(db.execute(
+                "SELECT filename, type, send FROM sendlog WHERE dt >= ? group by filename, type, send", (startdate,)))
+            # print(len(tmplist))
+            for one in tmplist:
+                if not one[2] in self.oldimg_lst:
+                    self.oldimg_lst[one[2]] = []
+                self.oldimg_lst[one[2]].append(one[0])
+            #print("oldimg_lst", self.oldimg_lst)
+        db_conn.commit()
+        db_conn.close()
 
     def deal(self, msg, sid = 0) -> str:
         replay = "这是一个默认回复。"
@@ -28,6 +81,29 @@ class Message:
             replay = self.ganzhi(org)[0]
         elif re.match('下个吉时', msg):
             replay = self.nextqmds()
+        elif re.search('新图', msg):
+            mt = re.search('新图\\*(\\d+)', msg)
+            loop = 1
+            if mt:
+                loop = min(int(mt.group(1)), 10)
+            replay = ""
+            for i in range(loop):
+                lib.log(f'{i+1} / {loop}')
+                if replay!= "":
+                    replay += '\n'                
+                replay += self.send_img(1, sid, msg)
+        elif re.search('热图', msg):
+            mt = re.search('热图\\*(\\d+)', msg)
+            loop = 1
+            if mt:
+                loop = min(int(mt.group(1)), 10)
+            replay = ""
+            for i in range(loop):
+                lib.log(f'{i+1} / {loop}')
+                if replay!= "":
+                    replay += '\n'                
+                replay += self.send_img(2, sid, msg)
+       
         return replay
 
     def getjieqi(self, date_q) -> str:
@@ -342,8 +418,587 @@ class Message:
             return ybtext.msg_notfind[2]
         else:
             return asw
+        
+    def random_str(self, str_list: list) -> str:
+        n = 0
+        n = math.floor(random.random() * len(str_list))
+        return str_list[n]
+
+    def random_dict(self, str_dict: dict) -> str:
+        new_dict = {}
+        max_weidth = 0
+        for ikey in str_dict:
+            max_weidth = max_weidth + str_dict[ikey]
+            new_dict[ikey] = max_weidth
+        n = math.floor(random.random() * max_weidth)
+        for ikey in new_dict:
+            if new_dict[ikey] > n:
+                return ikey
+        return "error"
+    
+    def translate_zh(self, org, lan) -> str:
+        appid = '20200722000524186'
+        secretKey = 'dcJeBxlKNqUMUXZPv_Mz'
+
+        httpClient = None
+        myurl = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
+
+        fromLang = 'auto'  # 原文语种
+        if re.match('^粤', lan):
+            fromLang = 'yue'
+        if re.match('^文言文', lan):
+            fromLang = 'wyw'
+        toLang = 'zh'  # 译文语种
+        salt = random.randint(32768, 65536)
+        q = org
+        sign = appid + q + str(salt) + secretKey
+        sign = hashlib.md5(sign.encode()).hexdigest()
+        myurl = myurl + '?appid=' + appid + '&q=' + urllib.parse.quote(
+            q) + '&from=' + fromLang + '&to=' + toLang + '&salt=' + str(salt) + '&sign=' + sign
+
+        asw = '未查到结果'
+
+        try:
+            httpClient = http.client.HTTPConnection('api.fanyi.baidu.com')
+            httpClient.request('GET', myurl)
+
+            # response是HTTPResponse对象
+            response = httpClient.getresponse()
+            result_all = response.read().decode("utf-8")
+            result = json.loads(result_all)
+            asw = result['trans_result'][0]['dst']
+            lan_from = ybtext.lang.get(result['from'], 'Other')
+            asw = result['trans_result'][0]['dst'] + " (" + lan_from + ")"
+
+        except Exception as e:
+            print(e)
+        finally:
+            if httpClient:
+                httpClient.close()
+        return asw
+
+    def transapi(self, q, lan, froml='auto') -> str:
+        appid = '20200722000524186'
+        secretKey = 'dcJeBxlKNqUMUXZPv_Mz'
+        httpClient = None
+        myurl = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
+
+        fromLang = froml  # 原文语种
+
+        salt = random.randint(32768, 65536)
+        toLang = lan
+        sign = appid + q + str(salt) + secretKey
+        sign = hashlib.md5(sign.encode()).hexdigest()
+        myurl = myurl + '?appid=' + appid + '&q=' + urllib.parse.quote(
+            q) + '&from=' + fromLang + '&to=' + toLang + '&salt=' + str(salt) + '&sign=' + sign
+        
+        ret = ""
+        
+        try:
+            httpClient = http.client.HTTPConnection('api.fanyi.baidu.com')
+            httpClient.request('GET', myurl)
+            for i in range(0,2):
+                response = httpClient.getresponse()
+                result_all = response.read().decode("utf-8")
+                result = json.loads(result_all)
+                if 'trans_result' in result:
+                    ret = result['trans_result'][0]['dst']
+                    break
+                else:
+                    print("translate_api return error:", result)
+                    time.sleep(0.5)
+        except Exception as e:
+            print("translate_api error", result)
+        finally:
+            if httpClient:
+                httpClient.close()
+        return ret
+    def translate_loop(self, org) -> str:
+        lan_lst = ["en", "jp", "kor", "fra", "spa", "ara", "ru", "pt", "de", "it", 
+                   "el", "nl", "pl", "bul", "est", "dan", "fin", "cs", "rom", "slo", "swe", "hu"]
+        que = org
+        lanFrom = "auto"
+        for lan in lan_lst:
+            que = self.transapi(que, lan, lanFrom)
+            #untrans = self.transapi(que, 'zh', lan)
+            #print(f'{ybtext.lang.get(lan)}:{que} | 汉语:{untrans}')
+            lanFrom = lan
+        asw = self.transapi(que, 'zh', lanFrom)
+        return asw
+
+    def translate_assign(self, org, lan, msg) -> str:
+        if re.search('日', lan):
+            toLang = 'jp'  # 译文语种
+        elif re.search('英', lan):
+            toLang = 'en'
+        elif re.search('德', lan):
+            toLang = 'de'
+        elif re.search('俄', lan):
+            toLang = 'ru'
+        elif re.search('法', lan):
+            toLang = 'fra'
+        elif re.search('文言文', lan):
+            toLang = 'wyw'
+        elif re.search('粤', lan):
+            toLang = 'yue'
+        # elif re.search('语音', lan):
+        #     return self.to_voice(org, msg)
+        else:
+            return '不支持语种'
+        
+        asw = self.transapi(org, toLang)
+        
+        return asw
+    
+    def pinyin(self, word) -> str:
+        import pypinyin
+        s = ''
+        for i in pypinyin.pinyin(word, style=pypinyin.NORMAL):
+            s += ''.join(i)
+        return s
+    
+    def send_img(self, searchtype, id, message):
+        def write_dblog(filename, id):
+            dt = time.strftime("%Y-%m-%d")
+            #print("dt:", dt)
+            db_conn = sqlite3.connect(os.path.join(
+                "data", "image.db"))
+            db = db_conn.cursor()
+            sender = str(id)
+            msg_type = "default"
+
+            db.execute("INSERT INTO sendlog (filename,type,send,dt) VALUES(?,?,?,?)",
+                       (filename, msg_type, sender, dt, ))
+            db_conn.commit()
+            db_conn.close()
+            self.oldimg_lst[sender].append(filename)
+            print(f"record {filename}")
+            self.lastimgfile[sender] = filename
+        self.cur_send_user = str(id)
+        tmp_msg = {}
+        ban = False
+        mode = searchtype == 2 and 'yande_hot' or 'yande'
+        tmp_msg, ban = self.image_api(mode, message)
+
+        if type(tmp_msg) is dict and 'data' in tmp_msg:
+            write_dblog(tmp_msg['data']['file'], id)
+
+        tips = tmp_msg['data']['file'] if 'data' in tmp_msg else ''
+        if 'data' in tmp_msg:
+            if 'delay' in tmp_msg['data']:
+                delay = tmp_msg['data']['delay']
+                if delay >= 24:
+                    delay = math.floor(delay / 24)
+                    delay = str(delay) + (" days" if delay > 1 else " day")
+                else:
+                    delay = str(delay) + (" hours" if delay > 1 else " hour")
+                tips += ('\n' + ybtext.msg_delay[0].format(delay))
+            if 'size' in tmp_msg['data']:
+                file_size = tmp_msg['data']['size']
+                file_size = round(file_size/(1024 * 1024), 2)
+                if file_size < 5:
+                    tips += ('\n' + ybtext.msg_size[0].format(file_size))
+                else:
+                    tips += ('\n' + ybtext.msg_size[1].format(file_size))
+            asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
+        else:
+            asw = tmp_msg
+        return asw
+
+    def image_api(self, mode: str, org=''):
+        def randomlist(orglst) -> list:
+            lst = []
+            start = 0
+            end = len(orglst)
+            for i in range(5, len(orglst)+1, 5):
+                end = i
+                lst = lst + random.sample(orglst[start:end], end - start)
+                start = end
+            if start < len(orglst):
+                lst = lst + \
+                    random.sample(orglst[start:len(orglst)], len(orglst)-start)
+            return lst
+
+        def check_contain_chinese(check_str):
+            for ch in check_str:
+                if u'\u4e00' <= ch <= u'\u9fff':
+                    return True
+            return False
+
+        def input_to_tag(org, mode):  # return: tag, continue
+            def merge_tags(tags1,  tags2):
+                merge = []
+                for it in tags1:
+                    for new in tags2:
+                        if it == new:
+                            merge.insert(0, it)
+                        elif new != '':
+                            merge.append(it + ' ' + new)
+                if len(merge) == 0:
+                    merge = tags1
+                return merge
+
+            def get_tag(tar, mode):
+                if tar == '':
+                    return []
+                if tar in self.map_tags:
+                    if type(self.map_tags[tar]) is list:
+                        return [self.random_str(self.map_tags[tar]), ]
+                    elif type(self.map_tags[tar]) is dict:
+                        return [self.random_dict(self.map_tags[tar]), ]
+                    else:
+                        return [self.map_tags[tar], ]
+                elif tar in ybtext.map_tags_fuzzy:
+                    if type(ybtext.map_tags_fuzzy[tar]) is list:
+                        tag = self.random_str(ybtext.map_tags_fuzzy[tar])
+                    elif type(ybtext.map_tags_fuzzy[tar]) is dict:
+                        tag = self.random_dict(ybtext.map_tags_fuzzy[tar])
+                    else:
+                        tag = ybtext.map_tags_fuzzy[tar]
+                elif not check_contain_chinese(tar):
+                    tag = tar
+                elif mode == 1:  # pingyin
+                    tag = self.pinyin(tar)
+                elif mode == 2:  # english ``
+                    tag = self.translate_assign(
+                        tar, '英', {},).lower().strip().replace(' ', '_')
+                    tag = re.sub('^the_', '', tag)
+                    tag = re.sub('[?？!！]', "", tag)
+                tag = tag.lower()
+
+                myurl = 'https://yande.re/tag.json?name=' + \
+                    tag + '&order=count&commit=Search&limit=20'
+                lib.log(f'{tar}-->{tag}')
+
+                response_tag = self.proxy_get(myurl)
+                tags = [tag, ]
+                if response_tag.status_code == 200:
+                    response_tag.encoding = response_tag.apparent_encoding
+                    res_list = json.loads(response_tag.text)
+                    ft_list = []
+                    sub_list = []
+                    tags = []
+                    for ires in res_list:
+                        #print(f'res:{ires} tar:{tag} equ: {ires["name"] == tag}')
+                        if ires['name'] == tag:
+                            tags.append(ires['name'])
+                        elif ires['type'] in (0, 3, 4):
+                            if tag in ires['name'].split('_'):
+                                ft_list.append(ires)
+                            else:
+                                sub_list.append(ires)
+                    if len(ft_list) + len(sub_list) > 0:
+                        # 从1级候选名单中抽取最多5个tag
+                        end = min(5 - len(tags), len(ft_list))
+                        rd_res = random.sample(ft_list[0:end], end)
+                        for one in rd_res:
+                            tags.append(one['name'])
+                        # 如果tags不满5个,从2级候选名单中抽取
+                        end = min(5 - len(tags), len(sub_list))
+                        rd_res = random.sample(sub_list[0:end], end)
+                        for one in rd_res:
+                            tags.append(one['name'])
+                else:
+                    print("Get " + myurl + " Fail status:" +
+                          str(response_tag.status_code))
+                return tags
+            ma = re.search('^(\\S+?)[新热]图', org)
+            if ma:
+                tars = ma.group(1).split(',')
+                tags = []
+                repeat_set = set()
+                for tar in tars:
+                    if not tar in repeat_set:
+                        new_tags = get_tag(tar, mode)
+                        if len(tags) == 0:
+                            tags = new_tags
+                        elif len(new_tags) != 0:
+                            tags = merge_tags(tags, new_tags)
+                        repeat_set.add(tar)
+                    if len(tags) > 10:
+                        break
+                return tags, (len(tags) > 0)
+            else:
+                return ["", ], True
+
+        def save_picture(img_url, path):
+            if not os.path.isfile(path):
+                response2 = self.proxy_get_stream(img_url)
+                if response2.status_code == 200:
+                    with open(path, "wb") as f:
+                        # f.write(response2.content)
+                        for chunk in response2.iter_content(chunk_size=1024):
+                            if chunk:
+                                f.write(chunk)
+                        print("Pic Writed")
+                else:
+                    print("Get " + img_url + " Fail status:" +
+                          str(response2.status_code))
+        black_list = {'himura_kiseki', 'uncompressed_file',
+                      'ringeko-chan', 'renberry'}
+        skip_list = {'pussy', 'penis', 'sex', 'nipples', }
+        ban_list = {'ass', 'breasts', 'nopan', 'naked', }  # 'no_bra'
+        relate = '图'
+        org = org.replace(' ', '')
+        ma = re.search('^(\\S+?)[新热]图', org)
+        if ma:
+            relate = ma.group(1)
+
+        if mode == 'yande':
+            try:
+                user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.164 Safari/537.36',
+                        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+                addr = 'https://yande.re/post.json?limit=200'
+                myurl = None
+                tags, goon = input_to_tag(org, 2)
+                print("tags:", tags)
+                if goon:
+                    for tag in tags:
+                        node1 = time.time()
+                        myurl = addr
+                        if tag != "":
+                            myurl = myurl + '&tags=' + tag
+
+                        rsp = self.proxy_get(myurl)
+                        res_list = json.loads(rsp.text)
+
+                        node2 = time.time()
+                        print("Yande search use {}s".format(
+                            round(node2-node1, 3)))
+                        sample_res = randomlist(res_list)
+                        for res in sample_res:
+                            # 分解url
+                            myurl = res['jpeg_url']
+                            sampleurl = res['sample_url']
+                            match = re.search('yande\.re%(\d+?)%', myurl)
+                            filename = match.group(1)+".jpg"
+                            # print("filename:"+filename)
+
+                            tags = set(res['tags'].split())
+                            rating = res['rating']
+                            file_size = int(res['file_size'])
+
+                            if not tags.isdisjoint(black_list):
+                                continue
+                            ifskip = not tags.isdisjoint(skip_list)
+                            if ifskip:
+                                continue  # 屏蔽色图
+                            ban = (not tags.isdisjoint(ban_list)
+                                   or rating == 'e') and (rating != 's')
+                            delay = math.floor(
+                                abs(time.time() - res['created_at'])/3600)
+
+                            path = os.path.join(self.pic_path, filename)
+                            path_s = os.path.join(
+                                self.pic_path, "sample", filename)
+
+                            #not os.path.isfile(path)
+                            if not self.cur_send_user in self.oldimg_lst:
+                                self.oldimg_lst[self.cur_send_user] = []
+
+                            if not filename in self.oldimg_lst[self.cur_send_user]:
+                                print("Tags:{}\nDelay:{}h, Size:{}M, Rating:{}, Skip:{}, Ban:{}".format(
+                                    tags, delay, round(file_size/(1024*1024), 2), rating, ifskip, ban))
+                                ma = re.search(
+                                    'i\d*\.pximg\.net.*\/(\d+?)(_p\d+)?\.\S+', res['source'])
+                                if ma:
+                                    res['source'] = "https://www.pixiv.net/artworks/" + \
+                                        ma.group(1)
+                                    #print( "new source",res['source'] )
+                                node3 = time.time()
+                                print("Fitter E img use {}s".format(
+                                    round(node3-node2, 3)))
+                                largesize = (file_size > 5242880)
+                                if not os.path.isfile(path) or (largesize and not os.path.isfile(path_s)):
+                                    # 缓存图片
+                                    save_picture(myurl, path)
+                                    if largesize:
+                                        save_picture(sampleurl, path_s)
+                                    node4 = time.time()
+                                    print("Get Picture from Yande use {}s".format(
+                                        round(node4-node3, 3)))
+                                # 构造图片信息
+                                tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
+                                                                     'source': res['source'], 'delay': delay, 'size': file_size, 'tags': ','.join(list(tags)[:20])}}
+                                # self.lastimgfile = filename
+                                if largesize:
+                                    tmp_msg['data']['url'] = os.path.join(self.pic_path, "sample", filename)
+                                    tmp_msg['data']['sample'] = True
+                                if ifskip:
+                                    tmp_msg['data']['skip'] = True
+                                return tmp_msg, ban
+                self.stopimg = True
+                return ybtext.msg_notexists[2].format(relate), False
+            except Exception as e:
+                print(f'yande error: {str(e)}')
+                if re.search('Cannot connect to proxy', str(e)):
+                    tmp_msg = ybtext.msg_bug[1]
+                elif re.search('No wife', str(e)):
+                    tmp_msg = ybtext.msg_bug[3]
+                else:
+                    tmp_msg = ybtext.msg_bug[0]
+                    traceback.print_exc()
+                if myurl != None:
+                    print("myurl:", myurl)
+            return tmp_msg, False
+        elif mode == 'yande_hot':
+            try:
+                user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+                        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+                addr = 'https://yande.re/post.json?limit=100'
+                myurl_img = None
+                org = org.strip()
+                tags, goon = input_to_tag(org, 2)
+                print("tags:", tags)
+                if goon:
+                    for tag in tags:
+                        myurl = addr
+                        if tag != "":
+                            myurl = myurl + '&tags=' + tag
+
+                        for i in range(1, 9):
+                            node1 = time.time()
+                            myurl_page = myurl + "&page=" + str(i)
+                            response = self.proxy_get(myurl_page)
+                            try:
+                                res_list = json.loads(response.text)
+                            except json.JSONDecodeError as je:
+                                print(
+                                    f'JSONDecodeError:{repr(je)}\nText: {response.text}')
+                                continue
+
+                            node2 = time.time()
+                            print("Yande search use {}s".format(
+                                round(node2-node1, 3)))
+                            sample_res = res_list
+                            if len(sample_res) == 0:
+                                break
+                            for res in sample_res:
+
+                                tags = set(res['tags'].split())
+                                rating = res['rating']
+                                if not tags.isdisjoint(black_list):
+                                    continue
+                                ifskip = not tags.isdisjoint(skip_list)
+                                ban = (not tags.isdisjoint(ban_list)
+                                       or rating == 'e') and (rating != 's')
+                                delay = math.floor(
+                                    abs(time.time() - res['created_at'])/3600)
+                                score = int(res['score'])
+                                #doorsill = (-(delay-24)*(delay-24) + 576)/20 if delay<=24 else 30
+                                doorsill = math.floor(
+                                    20 * (1 - math.exp(-(delay+3)/8)) if delay < 24 else 20)
+
+                                if ifskip and score < doorsill * 3 or ban and score < doorsill * 1.5 or score < doorsill:
+                                    continue
+
+                                # 分解url
+                                file_size = int(res['file_size'])
+                                myurl_img = res['jpeg_url']
+                                match = re.search(
+                                    'yande\.re%(\d+?)%', myurl_img)
+                                filename = match.group(1)+".jpg"
+                                sampleurl = res['sample_url']
+
+                                path = os.path.join(self.pic_path, filename)
+                                path_s = os.path.join(
+                                    self.pic_path, 'sample', filename)
+                                if not self.cur_send_user in self.oldimg_lst:
+                                    self.oldimg_lst[self.cur_send_user] = []
+
+                                if not filename in self.oldimg_lst[self.cur_send_user]:
+                                    print("Tags:{}, Rating:{}, Skip:{}, Ban:{}\nDelay:{}h, Size:{}M, Score/Door:{}/{}".format(
+                                        tags, rating, ifskip, ban, delay, round(file_size/(1024*1024), 2), score, doorsill,))
+                                    node3 = time.time()
+                                    print("Fitter old img use {}s".format(
+                                        round(node3-node2, 3)))
+                                    largesize = (file_size > 5242880)
+                                    ma = re.search(
+                                        'i\d*\.pximg\.net.*\/(\d+?)(_p\d+)?\.\S+', res['source'])
+                                    if ma:
+                                        res['source'] = "https://www.pixiv.net/artworks/" + \
+                                            ma.group(1)
+                                    if not os.path.isfile(path) or (largesize and not os.path.isfile(path_s)):
+                                        # 如果没有缓存,下载图片
+                                        save_picture(myurl_img, path)
+                                        if largesize:
+                                            save_picture(sampleurl, path_s)
+                                        node4 = time.time()
+                                        print("Get Picture from Yande use {}s".format(
+                                            round(node4-node3, 3)))
+                                    # 构造图片信息
+                                    tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
+                                                                         'source': res['source'], 'delay': delay, 'size': file_size, 'tags': ','.join(list(tags)[:20])}}
+                                    if largesize:
+                                        tmp_msg['data']['url'] = os.path.join(self.pic_path, "sample", filename)
+                                        tmp_msg['data']['sample'] = True
+                                    #self.lastimgfile = filename
+                                    if ifskip:
+                                        tmp_msg['data']['skip'] = True
+                                    return tmp_msg, ban
+                self.stopimg = True
+                return ybtext.msg_notexists[2].format(relate), False
+            except Exception as e:
+                print(f'yande_hot error: {str(e)}', e.args[0])
+                if re.search('Cannot connect to proxy', str(e)):
+                    tmp_msg = ybtext.msg_bug[1]
+                elif re.search('No wife', str(e)):
+                    tmp_msg = ybtext.msg_bug[3]
+                else:
+                    tmp_msg = ybtext.msg_bug[0]
+                    traceback.print_exc()
+                if myurl_img != None:
+                    print("myurl_img:", myurl_img)
+            return tmp_msg, False
+        return "Error No Api", False
+    def proxy_get(self, url, ):
+        user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+        proxies = {'http': 'http://127.0.0.1:7890',
+                   'https': 'http://127.0.0.1:7890'}
+        yande_cookie = {'user_id': '55635', 'user_info': '55635%3B30%3B0'}
+        sess = requests.Session()
+        sess.keep_alive = False
+        i = 0
+        while i < 5:
+            try:
+                response = requests.get(
+                    url, headers=user, proxies=proxies, cookies=yande_cookie, timeout=60)
+                response.encoding = response.apparent_encoding
+                return response
+            except MemoryError as me:
+                i += 5
+                print(f'proxy get error: MemoryError')
+                raise MemoryError("HTTP Get Over Memory")
+            except Exception as e:
+                i += 1
+                print(f'proxy get error times {i}:\n{repr(e)}')
+                time.sleep(0.2)
+        raise Exception('Cannot connect to proxy')
+
+    def proxy_get_stream(self, url, ):
+        user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+        proxies = {'http': 'http://127.0.0.1:7890',
+                   'https': 'http://127.0.0.1:7890'}
+        yande_cookie = {'user_id': '55635', 'user_info': '55635%3B30%3B0'}
+        sess = requests.Session()
+        sess.keep_alive = False
+        i = 0
+        while i < 5:
+            try:
+                response = requests.get(
+                    url, headers=user, proxies=proxies, timeout=60, cookies=yande_cookie, stream=True)
+                #response.encoding = response.apparent_encoding
+                return response
+            except MemoryError as me:
+                i += 5
+                print(f'proxy get error: MemoryError')
+                raise MemoryError("HTTP Get Over Memory")
+            except Exception as e:
+                i += 1
+                print(f'proxy get error times {i}:\n{repr(e)}')
+        raise Exception('Cannot connect to proxy')
 if __name__ == '__main__':
     qm = Message()
-    asw, _, _ = qm.ganzhi("-1")
-    #asw = qm.nextqmds()
-    print(asw)
+    
