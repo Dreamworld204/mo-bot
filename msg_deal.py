@@ -37,7 +37,7 @@ class Message:
                 'tags.json', 'w', encoding='utf-8'))
         # self.pic_path = "/home/sunjianpei/apache-tomcat-9.0.65/webapps/sumi/pic/"
         self.pic_path = "./static/pic/"
-        lib.check_path(os.path.join(self.pic_path , "sample"))
+        lib.check_path(os.path.join(self.pic_path , "sample/"))
         lib.check_path("./data/")
 
         db_exists = os.path.exists(os.path.join("data", "image.db"))
