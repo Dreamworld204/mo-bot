@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MoMoBot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -67,6 +68,28 @@
             margin-right: 20px;
             /* 设置按钮与右侧的间距 */
         }
+
+        #waiting-message {
+            text-align: center;
+            /* 让文字居中 */
+            display: none;
+            /* 初始时隐藏 */
+            background-color: #fffd7a;
+        }
+
+        #waiting-icon {
+            animation: spin 1s infinite linear;
+            /* 添加旋转动画，持续时间1秒，无限循环，线性运动 */
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 
@@ -74,6 +97,10 @@
 
     <div id="chat-container">
         <div class="message default" id="chat-output"></div>
+        <div id="waiting-message" class="message bot-message loading">
+            <i id="waiting-icon" class="fas fa-spinner fa-spin"></i>
+            等待中...
+        </div>
         <textarea id="user-input" placeholder="输入消息..." rows="3"></textarea>
         <button id="send-button" onclick="sendMessage()">发送</button>
     </div>
@@ -93,8 +120,16 @@
         function sendMessage() {
             var userInput = document.getElementById('user-input').value;
             var sendButton = document.getElementById('send-button');
+            var waitingMessage = document.getElementById('waiting-message');
+            var chatOutput = document.getElementById('chat-output');
 
             sendButton.disabled = true;
+            waitingMessage.style.display = 'block';
+
+            // 将输入内容移到聊天框
+            document.getElementById('user-input').value = '';
+            chatOutput.innerHTML += '<div class="message user-message">' + userInput.replace(/\n/g, '<br>') + '</div>';
+            scrollToBottom();
 
             // 发送用户输入到服务器
             fetch('/process_input', {
@@ -106,27 +141,21 @@
             })
                 .then(response => response.json())
                 .then(data => {
-                    // 将服务器返回的回复添加到聊天输出区域
-                    var chatOutput = document.getElementById('chat-output');
-                    chatOutput.innerHTML += '<div class="message user-message">' + userInput.replace(/\n/g, '<br>') + '</div>';
+                    // 将服务器返回的回复添加到聊天框
                     chatOutput.innerHTML += '<div class="message bot-message">' + data.bot_reply.replace(/\n/g, '<br>') + '</div>';
 
-                    // 清空输入框
-                    document.getElementById('user-input').value = '';
-
-                    // 调整输入框高度
                     adjustInputHeight();
-
-                    // 滚动到底部
                     scrollToBottom();
 
                     sendButton.disabled = false;
+                    waitingMessage.style.display = 'none';
 
                     document.getElementById('user-input').focus();
                 })
                 .catch(error => {
                     console.error('Error sending message:', error);
                     sendButton.isabled = false;
+                    waitingMessage.style.display = 'none';
                 });
         }
 
