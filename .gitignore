@@ -1,0 +1,6 @@
+static/pic/
+__pycache__
+data
+
+jieqi.json
+tags.json
