@@ -600,6 +600,8 @@ class Message:
                     tips += ('\n' + ybtext.msg_size[0].format(file_size))
                 else:
                     tips += ('\n' + ybtext.msg_size[1].format(file_size))
+            if ban:
+                imginfo = ybtext.msg_skip[1].format(tmp_msg['data']['file'])
             asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
         else:
             asw = tmp_msg

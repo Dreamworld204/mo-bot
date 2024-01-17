@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Pic</title>
+    <style>
+        img {
+            max-height: 300px;
+            max-width: 300px;
+            height: auto;
+            width: auto;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        #pic-container {
+            margin-bottom: 10px;
+        }
+
+        #pagination-container {
+            display: flex;
+            justify-content: center;
+        }
+
+        #pagination-container a {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="pic-container">
+        {% for i in all_pic %}
+        <a href="./static/pic/{{i}}" target="_blank">
+            <img src="./static/pic/{{i}}" alt="{{i}}">
+        </a>
+        {% endfor %}
+    </div>
+
+    <div id="pagination-container">
+        {% if now_page != 1 %}
+            <a href="./pic?page=1">1</a>
+        {% endif %}
+
+        {% if now_page - 4 > 2 %}
+            ...
+        {% endif %}
+
+        {% for page in range(2, now_page) %}
+            {% if page >= now_page - 4 %}
+                <a href="./pic?page={{ page }}">{{ page }}</a>
+            {% endif %}
+        {% endfor %}
+
+        <strong>{{ now_page }}</strong>
+
+        {% for page in range(now_page + 1, total_page) %}
+            {% if page <= now_page + 4 %}
+                <a href="./pic?page={{ page }}">{{ page }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if now_page + 4 < total_page - 1 %}
+            ...
+        {% endif %}
+
+        {% if now_page != total_page and total_page != 1 %}
+            <a href="./pic?page={{ total_page }}">{{total_page}}</a>
+        {% endif %}
+    </div>
+</body>
+
+</html>
