@@ -101,7 +101,7 @@
 </head>
 
 <body>
-
+    <button id="logout-button" onclick="logout()">登出</button>
     <div id="chat-container">
         <div class="message default" id="chat-output"></div>
         <div id="waiting-message" class="message bot-message loading">
@@ -122,6 +122,12 @@
         function scrollToBottom() {
             var chatContainer = document.getElementById('chat-container');
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function logout() {
+            document.cookie = "user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+            window.location.href = '/logout';
         }
 
         function sendMessage() {

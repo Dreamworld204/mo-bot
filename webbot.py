@@ -1,6 +1,6 @@
 #webbot.py
 import math
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash
 import os
 import msg_deal as msg
 import mlib as lib
@@ -10,11 +10,33 @@ app.secret_key = 'a6ae45f512419d4a35a725d4d04c9c8a'
 
 @app.route('/', methods=['GET','POST'])
 def dialog_main():
+    username = request.cookies.get('user')
+    lib.log(f'username: {username}')
+    if not username:
+        return redirect(url_for('login'))
     return render_template('dialog.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        flash(f'Last Logged in as {username}')
+        
+        response = redirect(url_for('dialog_main'))
+        response.set_cookie('user', username)
+        return response
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    response = redirect(url_for('login'))
+    response.set_cookie('user', '', expires=0)
+    return response
 
 @app.route('/pic', methods=['GET'])
 def getpic():
-    show_num = 1 # 一页显示的数量
+    show_num = 5 # 一页显示的数量
 
     page = int(request.args.get('page', 1))
 
@@ -36,20 +58,15 @@ def getpic():
     
     return render_template('piclist.html', all_pic = piclist, total_page = total_page, now_page = page)
 
-session_num = 0
 @app.route('/process_input', methods=['POST'])
 def process_input():
-    user_input = request.form['user_input']
-    global session_num
+    userid = request.cookies.get('user') or "default"
+    lib.log(f'userid: {userid}')
 
-    sessionid = session.get('session_id')
-    if not sessionid:
-        session_num += 1
-        session['session_id'] = session_num
-        sessionid = session_num
+    user_input = request.form['user_input']
     
     #回复
-    bot_reply = qm.deal(user_input, sessionid)
+    bot_reply = qm.deal(user_input, userid)
 
     return jsonify({'bot_reply': bot_reply})
 

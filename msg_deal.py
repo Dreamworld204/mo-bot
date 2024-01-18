@@ -1,7 +1,6 @@
 #msg_deal.py
 import http.client
 import hashlib
-import sqlite3
 import urllib
 from urllib import request, error
 import time
@@ -15,6 +14,7 @@ import random
 import requests
 
 import mlib as lib
+from imagedb import ImgDB
 import ybtext
 
 class Message:
@@ -22,6 +22,7 @@ class Message:
     oldimg_lst = {}
     lastimgfile = {}
     cur_send_user = ""
+    imgdb = ImgDB()
 
     def __init__(self):
         if os.path.exists('jieqi.json'):
@@ -38,42 +39,19 @@ class Message:
         # self.pic_path = "/home/sunjianpei/apache-tomcat-9.0.65/webapps/sumi/pic/"
         self.pic_path = "./static/pic/"
         lib.check_path(os.path.join(self.pic_path , "sample/"))
-        lib.check_path("./data/")
 
-        db_exists = os.path.exists(os.path.join("data", "image.db"))
-        db_conn = sqlite3.connect(os.path.join("data", "image.db"))
-        db = db_conn.cursor()
 
-        if not db_exists:
-            db.execute(
-                '''CREATE TABLE if not EXISTS sendlog(
-                filename TEXT ,
-                type TEXT,
-                send TEXT,
-                dt TEXT
-                )''')
-            db.execute(
-                '''CREATE TABLE if not EXISTS userfavor(
-                user INT,
-                tag TEXT,
-                times INT
-                )''')
-        else:
-            startdate = time.strftime(
-                "%Y-%m-%d", time.localtime(time.time() - 30 * 24 * 3600))
 
-            tmplist = list(db.execute(
-                "SELECT filename, type, send FROM sendlog WHERE dt >= ? group by filename, type, send", (startdate,)))
-            # print(len(tmplist))
-            for one in tmplist:
-                if not one[2] in self.oldimg_lst:
-                    self.oldimg_lst[one[2]] = []
-                self.oldimg_lst[one[2]].append(one[0])
-            #print("oldimg_lst", self.oldimg_lst)
-        db_conn.commit()
-        db_conn.close()
+        tmplist = list(self.imgdb.get_sendlog_month())
+        # print(len(tmplist))
+        for one in tmplist:
+            if not one[2] in self.oldimg_lst:
+                self.oldimg_lst[one[2]] = []
+            self.oldimg_lst[one[2]].append(one[0])
+        #print("oldimg_lst", self.oldimg_lst)
 
-    def deal(self, msg, sid = 0) -> str:
+
+    def deal(self, msg, sid = '0') -> str:
         replay = "这是一个默认回复。"
         if re.match('^干支[:：]?(.*)', msg):
             mt = re.match('干支[:：]?(.*)', msg)
@@ -505,10 +483,10 @@ class Message:
                     ret = result['trans_result'][0]['dst']
                     break
                 else:
-                    print("translate_api return error:", result)
+                    lib.log("translate_api return error:", result)
                     time.sleep(0.5)
         except Exception as e:
-            print("translate_api error", result)
+            lib.log("translate_api error", result)
         finally:
             if httpClient:
                 httpClient.close()
@@ -561,18 +539,13 @@ class Message:
         def write_dblog(filename, id):
             dt = time.strftime("%Y-%m-%d")
             #print("dt:", dt)
-            db_conn = sqlite3.connect(os.path.join(
-                "data", "image.db"))
-            db = db_conn.cursor()
+
             sender = str(id)
             msg_type = "default"
+            self.imgdb.insert(filename, msg_type, sender, dt) 
 
-            db.execute("INSERT INTO sendlog (filename,type,send,dt) VALUES(?,?,?,?)",
-                       (filename, msg_type, sender, dt, ))
-            db_conn.commit()
-            db_conn.close()
             self.oldimg_lst[sender].append(filename)
-            print(f"record {filename}")
+            lib.log(f"record {filename}")
             self.lastimgfile[sender] = filename
         self.cur_send_user = str(id)
         tmp_msg = {}
@@ -601,7 +574,7 @@ class Message:
                 else:
                     tips += ('\n' + ybtext.msg_size[1].format(file_size))
             if ban:
-                imginfo = ybtext.msg_skip[1].format(tmp_msg['data']['file'])
+                imginfo = ybtext.msg_skip[4].format(tmp_msg['data']['file'], tmp_msg['data']['source'])
             asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
         else:
             asw = tmp_msg
@@ -701,7 +674,7 @@ class Message:
                         for one in rd_res:
                             tags.append(one['name'])
                 else:
-                    print("Get " + myurl + " Fail status:" +
+                    lib.log("Get " + myurl + " Fail status:" +
                           str(response_tag.status_code))
                 return tags
             ma = re.search('^(\\S+?)[新热]图', org)
@@ -732,9 +705,9 @@ class Message:
                         for chunk in response2.iter_content(chunk_size=1024):
                             if chunk:
                                 f.write(chunk)
-                        print("Pic Writed")
+                        lib.log("Pic Writed")
                 else:
-                    print("Get " + img_url + " Fail status:" +
+                    lib.log("Get " + img_url + " Fail status:" +
                           str(response2.status_code))
         black_list = {'himura_kiseki', 'uncompressed_file',
                       'ringeko-chan', 'renberry'}
@@ -753,7 +726,7 @@ class Message:
                 addr = 'https://yande.re/post.json?limit=200'
                 myurl = None
                 tags, goon = input_to_tag(org, 2)
-                print("tags:", tags)
+                lib.log("tags:", tags)
                 if goon:
                     for tag in tags:
                         node1 = time.time()
@@ -765,7 +738,7 @@ class Message:
                         res_list = json.loads(rsp.text)
 
                         node2 = time.time()
-                        print("Yande search use {}s".format(
+                        lib.log("Yande search use {}s".format(
                             round(node2-node1, 3)))
                         sample_res = randomlist(res_list)
                         for res in sample_res:
@@ -799,7 +772,7 @@ class Message:
                                 self.oldimg_lst[self.cur_send_user] = []
 
                             if not filename in self.oldimg_lst[self.cur_send_user]:
-                                print("Tags:{}\nDelay:{}h, Size:{}M, Rating:{}, Skip:{}, Ban:{}".format(
+                                lib.log("Tags:{}\nDelay:{}h, Size:{}M, Rating:{}, Skip:{}, Ban:{}".format(
                                     tags, delay, round(file_size/(1024*1024), 2), rating, ifskip, ban))
                                 ma = re.search(
                                     'i\d*\.pximg\.net.*\/(\d+?)(_p\d+)?\.\S+', res['source'])
@@ -808,7 +781,7 @@ class Message:
                                         ma.group(1)
                                     #print( "new source",res['source'] )
                                 node3 = time.time()
-                                print("Fitter E img use {}s".format(
+                                lib.log("Fitter E img use {}s".format(
                                     round(node3-node2, 3)))
                                 largesize = (file_size > 5242880)
                                 if not os.path.isfile(path) or (largesize and not os.path.isfile(path_s)):
@@ -817,7 +790,7 @@ class Message:
                                     if largesize:
                                         save_picture(sampleurl, path_s)
                                     node4 = time.time()
-                                    print("Get Picture from Yande use {}s".format(
+                                    lib.log("Get Picture from Yande use {}s".format(
                                         round(node4-node3, 3)))
                                 # 构造图片信息
                                 tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
@@ -832,7 +805,7 @@ class Message:
                 self.stopimg = True
                 return ybtext.msg_notexists[2].format(relate), False
             except Exception as e:
-                print(f'yande error: {str(e)}')
+                lib.log(f'yande error: {str(e)}')
                 if re.search('Cannot connect to proxy', str(e)):
                     tmp_msg = ybtext.msg_bug[1]
                 elif re.search('No wife', str(e)):
@@ -841,7 +814,7 @@ class Message:
                     tmp_msg = ybtext.msg_bug[0]
                     traceback.print_exc()
                 if myurl != None:
-                    print("myurl:", myurl)
+                    lib.log("myurl:", myurl)
             return tmp_msg, False
         elif mode == 'yande_hot':
             try:
@@ -851,7 +824,7 @@ class Message:
                 myurl_img = None
                 org = org.strip()
                 tags, goon = input_to_tag(org, 2)
-                print("tags:", tags)
+                lib.log("tags:", tags)
                 if goon:
                     for tag in tags:
                         myurl = addr
@@ -865,12 +838,12 @@ class Message:
                             try:
                                 res_list = json.loads(response.text)
                             except json.JSONDecodeError as je:
-                                print(
+                                lib.log(
                                     f'JSONDecodeError:{repr(je)}\nText: {response.text}')
                                 continue
 
                             node2 = time.time()
-                            print("Yande search use {}s".format(
+                            lib.log("Yande search use {}s".format(
                                 round(node2-node1, 3)))
                             sample_res = res_list
                             if len(sample_res) == 0:
@@ -909,10 +882,10 @@ class Message:
                                     self.oldimg_lst[self.cur_send_user] = []
 
                                 if not filename in self.oldimg_lst[self.cur_send_user]:
-                                    print("Tags:{}, Rating:{}, Skip:{}, Ban:{}\nDelay:{}h, Size:{}M, Score/Door:{}/{}".format(
+                                    lib.log("Tags:{}, Rating:{}, Skip:{}, Ban:{}\nDelay:{}h, Size:{}M, Score/Door:{}/{}".format(
                                         tags, rating, ifskip, ban, delay, round(file_size/(1024*1024), 2), score, doorsill,))
                                     node3 = time.time()
-                                    print("Fitter old img use {}s".format(
+                                    lib.log("Fitter old img use {}s".format(
                                         round(node3-node2, 3)))
                                     largesize = (file_size > 5242880)
                                     ma = re.search(
@@ -926,7 +899,7 @@ class Message:
                                         if largesize:
                                             save_picture(sampleurl, path_s)
                                         node4 = time.time()
-                                        print("Get Picture from Yande use {}s".format(
+                                        lib.log("Get Picture from Yande use {}s".format(
                                             round(node4-node3, 3)))
                                     # 构造图片信息
                                     tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
@@ -941,7 +914,7 @@ class Message:
                 self.stopimg = True
                 return ybtext.msg_notexists[2].format(relate), False
             except Exception as e:
-                print(f'yande_hot error: {str(e)}', e.args[0])
+                lib.log(f'yande_hot error: {str(e)}', e.args[0])
                 if re.search('Cannot connect to proxy', str(e)):
                     tmp_msg = ybtext.msg_bug[1]
                 elif re.search('No wife', str(e)):
@@ -950,7 +923,7 @@ class Message:
                     tmp_msg = ybtext.msg_bug[0]
                     traceback.print_exc()
                 if myurl_img != None:
-                    print("myurl_img:", myurl_img)
+                    lib.log("myurl_img:", myurl_img)
             return tmp_msg, False
         return "Error No Api", False
     def proxy_get(self, url, ):
@@ -970,11 +943,11 @@ class Message:
                 return response
             except MemoryError as me:
                 i += 5
-                print(f'proxy get error: MemoryError')
+                lib.log(f'proxy get error: MemoryError')
                 raise MemoryError("HTTP Get Over Memory")
             except Exception as e:
                 i += 1
-                print(f'proxy get error times {i}:\n{repr(e)}')
+                lib.log(f'proxy get error times {i}:\n{repr(e)}')
                 time.sleep(0.2)
         raise Exception('Cannot connect to proxy')
 
@@ -995,11 +968,11 @@ class Message:
                 return response
             except MemoryError as me:
                 i += 5
-                print(f'proxy get error: MemoryError')
+                lib.log(f'proxy get error: MemoryError')
                 raise MemoryError("HTTP Get Over Memory")
             except Exception as e:
                 i += 1
-                print(f'proxy get error times {i}:\n{repr(e)}')
+                lib.log(f'proxy get error times {i}:\n{repr(e)}')
         raise Exception('Cannot connect to proxy')
 if __name__ == '__main__':
     qm = Message()

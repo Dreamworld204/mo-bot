@@ -1,8 +1,9 @@
 import time, os
 
-def log(text:str):
+def log(text:str, *args):
     now = time.strftime("%Y-%m-%d %H:%M:%S")
-    print(f'[{now}] {text}')
+    strArgs = "\t" + "\t".join(map(str, args))
+    print(f'[{now}] {text}{strArgs}')
 
 def check_path(file_path):
     folder_path = os.path.dirname(file_path)
