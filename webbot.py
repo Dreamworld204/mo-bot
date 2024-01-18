@@ -4,9 +4,11 @@ from flask import Flask, render_template, redirect, url_for, request, jsonify, s
 import os
 import msg_deal as msg
 import scrlib.mlib as lib
+from scrlib.userdb import UserDB
 
 app = Flask(__name__)
 app.secret_key = 'a6ae45f512419d4a35a725d4d04c9c8a'
+__invitekey = 'momotalk'
 
 @app.route('/', methods=['GET','POST'])
 def dialog_main():
@@ -14,19 +16,34 @@ def dialog_main():
     lib.log(f'username: {username}')
     if not username:
         return redirect(url_for('login'))
-    return render_template('dialog.html')
+    return render_template('dialog.html', username = username)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    need_invite = False
+    username = ""
     if request.method == 'POST':
         username = request.form.get('username')
-        flash(f'Last Logged in as {username}')
-        
-        response = redirect(url_for('dialog_main'))
-        response.set_cookie('user', username)
-        return response
-
-    return render_template('login.html')
+        invitecode = request.form.get('invitecode')
+        password = '111111'
+        if username in user_password:
+            flash(f'Last Logged in as {username}')
+            response = redirect(url_for('dialog_main'))
+            response.set_cookie('user', username)
+            return response
+        else:
+            need_invite = True
+            if invitecode:
+                if invitecode == __invitekey:
+                    register(username, password)
+                    response = redirect(url_for('dialog_main'))
+                    response.set_cookie('user', username)
+                    return response
+                else:
+                    flash(f'Wrong Code')
+            else:
+                flash(f'Need Invite')
+    return render_template('login.html', need_invite = need_invite, inputname=username)
 
 @app.route('/logout')
 def logout():
@@ -70,8 +87,10 @@ def process_input():
 
     return jsonify({'bot_reply': bot_reply})
 
-def init():
-    return
+def register(user, password):
+    user_password[user] = password
+    userdb.insert(user, password)
+
 
 def creatrandomstr(lenth=16):
     import secrets
@@ -81,4 +100,9 @@ def creatrandomstr(lenth=16):
 
 if __name__ == '__main__':
     qm = msg.Message()
+    userdb = UserDB()
+    user_password = {}
+    for one in userdb.get_all_user():
+        user_password[one[0]] = one[1]
+
     app.run(host='0.0.0.0',port='2333')

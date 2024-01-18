@@ -101,7 +101,10 @@
 </head>
 
 <body>
-    <button id="logout-button" onclick="logout()">登出</button>
+    <div>
+        <label for="username">Now User:{{username}}</label>
+        <button id="logout-button" onclick="logout()">登出</button>
+    </div>
     <div id="chat-container">
         <div class="message default" id="chat-output"></div>
         <div id="waiting-message" class="message bot-message loading">

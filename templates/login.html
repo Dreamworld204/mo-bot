@@ -10,7 +10,11 @@
     <h2>Login</h2>
     <form method="post" action="{{ url_for('login') }}">
         <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
+        <input type="text" id="username" name="username" value = "{{ inputname }}" required>
+        {% if need_invite %}
+        <label for="username">Invite Code:</label>
+        <input type="text" id="invitecode" name="invitecode">
+        {% endif %}
         <button type="submit">Login</button>
     </form>
 
