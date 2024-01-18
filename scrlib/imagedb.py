@@ -2,7 +2,7 @@ import sqlite3
 import os
 import time
 
-import mlib as lib
+import scrlib.mlib as lib
 
 class ImgDB:
     def __init__(self):
@@ -28,10 +28,10 @@ class ImgDB:
             
             db_conn.commit()
     def execute(self, sql, params):
-        with sqlite3.connect(os.path.join("data", "image.db")) as db_conn_n:
-            db = db_conn_n.cursor()
+        with sqlite3.connect(os.path.join("data", "image.db")) as db_conn:
+            db = db_conn.cursor()
             res = db.execute(sql, params)
-            db_conn_n.commit()
+            db_conn.commit()
         return res
     # 获取近一个月的记录
     def get_sendlog_month(self):

@@ -13,9 +13,9 @@ import traceback
 import random
 import requests
 
-import mlib as lib
-from imagedb import ImgDB
-import ybtext
+import scrlib.mlib as lib
+from scrlib.imagedb import ImgDB
+import scrlib.ybtext as ybtext
 
 class Message:
     date_jieqi = {}
