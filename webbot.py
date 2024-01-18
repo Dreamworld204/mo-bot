@@ -1,7 +1,7 @@
 #webbot.py
 import math
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash
-import os
+import os, re
 import msg_deal as msg
 import scrlib.mlib as lib
 from scrlib.userdb import UserDB
@@ -35,10 +35,13 @@ def login():
             need_invite = True
             if invitecode:
                 if invitecode == __invitekey:
-                    register(username, password)
-                    response = redirect(url_for('dialog_main'))
-                    response.set_cookie('user', username)
-                    return response
+                    if re.match('^[\d\w]+$', username):
+                        register(username, password)
+                        response = redirect(url_for('dialog_main'))
+                        response.set_cookie('user', username)
+                        return response
+                    else:
+                        flash('Username can only contain words and digits')
                 else:
                     flash(f'Wrong Code')
             else:
