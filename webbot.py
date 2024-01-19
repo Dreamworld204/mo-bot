@@ -12,10 +12,11 @@ __invitekey = 'momotalk'
 
 @app.route('/', methods=['GET','POST'])
 def dialog_main():
-    username = request.cookies.get('user')
-    lib.log(f'username: {username}')
+    session['nowurl'] = url_for('dialog_main')
+    username = request.cookies.get('user')   
     if not username:
         return redirect(url_for('login'))
+    lib.log(f'User Login: {username}')
     return render_template('dialog.html', username = username)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -28,7 +29,7 @@ def login():
         password = '111111'
         if username in user_password:
             flash(f'Last Logged in as {username}')
-            response = redirect(url_for('dialog_main'))
+            response = redirect(session.get('nowurl', url_for('dialog_main')))
             response.set_cookie('user', username)
             return response
         else:
@@ -37,7 +38,7 @@ def login():
                 if invitecode == __invitekey:
                     if re.match('^[\d\w]+$', username):
                         register(username, password)
-                        response = redirect(url_for('dialog_main'))
+                        response = redirect(session.get('nowurl', url_for('dialog_main')))
                         response.set_cookie('user', username)
                         return response
                     else:
@@ -56,12 +57,16 @@ def logout():
 
 @app.route('/pic', methods=['GET'])
 def getpic():
-    show_num = 5 # 一页显示的数量
-
+    session['nowurl'] = url_for('getpic')
+    username = request.cookies.get('user')
+    if not username:
+        return redirect(url_for('login'))
+    
+    show_num = 10 # 一页显示的数量
     page = int(request.args.get('page', 1))
-
     pic_path = 'static/pic/'
-    filelist = os.listdir(pic_path)
+    preview_path = 'static/pic/preview/'
+    filelist = os.listdir(preview_path)
     piclist = []
 
     filelist = sorted(filelist, key=lambda x: os.path.getmtime(os.path.join(pic_path, x)), reverse=True)
@@ -80,8 +85,8 @@ def getpic():
 
 @app.route('/process_input', methods=['POST'])
 def process_input():
-    userid = request.cookies.get('user') or "default"
-    lib.log(f'userid: {userid}')
+    userid = request.cookies.get('user', "default")
+    # lib.log(f'userid: {userid}')
 
     user_input = request.form['user_input']
     

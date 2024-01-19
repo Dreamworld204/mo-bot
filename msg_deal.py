@@ -39,8 +39,7 @@ class Message:
         # self.pic_path = "/home/sunjianpei/apache-tomcat-9.0.65/webapps/sumi/pic/"
         self.pic_path = "./static/pic/"
         lib.check_path(os.path.join(self.pic_path , "sample/"))
-
-
+        lib.check_path(os.path.join(self.pic_path , "preview/"))
 
         tmplist = list(self.imgdb.get_sendlog_month())
         # print(len(tmplist))
@@ -545,7 +544,7 @@ class Message:
             self.imgdb.insert(filename, msg_type, sender, dt) 
 
             self.oldimg_lst[sender].append(filename)
-            lib.log(f"record {filename}")
+            # print(f"record {filename}")
             self.lastimgfile[sender] = filename
         self.cur_send_user = str(id)
         tmp_msg = {}
@@ -698,6 +697,7 @@ class Message:
 
         def save_picture(img_url, path):
             if not os.path.isfile(path):
+                start_time = time.time()
                 response2 = self.proxy_get_stream(img_url)
                 if response2.status_code == 200:
                     with open(path, "wb") as f:
@@ -705,7 +705,8 @@ class Message:
                         for chunk in response2.iter_content(chunk_size=1024):
                             if chunk:
                                 f.write(chunk)
-                        lib.log("Pic Writed")
+                    use_time = round(time.time() - start_time, 2)
+                    lib.log(f"Pic {path} Writed Use {use_time}s")
                 else:
                     lib.log("Get " + img_url + " Fail status:" +
                           str(response2.status_code))
@@ -745,6 +746,7 @@ class Message:
                             # 分解url
                             myurl = res['jpeg_url']
                             sampleurl = res['sample_url']
+                            preurl = res['preview_url']
                             match = re.search('yande\.re%(\d+?)%', myurl)
                             filename = match.group(1)+".jpg"
                             # print("filename:"+filename)
@@ -766,6 +768,8 @@ class Message:
                             path = os.path.join(self.pic_path, filename)
                             path_s = os.path.join(
                                 self.pic_path, "sample", filename)
+                            path_p = os.path.join(
+                                self.pic_path, "preview", filename)
 
                             #not os.path.isfile(path)
                             if not self.cur_send_user in self.oldimg_lst:
@@ -784,14 +788,13 @@ class Message:
                                 lib.log("Fitter E img use {}s".format(
                                     round(node3-node2, 3)))
                                 largesize = (file_size > 5242880)
+                                # 缓存图片
                                 if not os.path.isfile(path) or (largesize and not os.path.isfile(path_s)):
-                                    # 缓存图片
                                     save_picture(myurl, path)
                                     if largesize:
                                         save_picture(sampleurl, path_s)
-                                    node4 = time.time()
-                                    lib.log("Get Picture from Yande use {}s".format(
-                                        round(node4-node3, 3)))
+                                if not os.path.isfile(path_p):
+                                    save_picture(preurl, path_p)
                                 # 构造图片信息
                                 tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
                                                                      'source': res['source'], 'delay': delay, 'size': file_size, 'tags': ','.join(list(tags)[:20])}}
@@ -874,10 +877,12 @@ class Message:
                                     'yande\.re%(\d+?)%', myurl_img)
                                 filename = match.group(1)+".jpg"
                                 sampleurl = res['sample_url']
+                                preurl = res['preview_url']
 
                                 path = os.path.join(self.pic_path, filename)
                                 path_s = os.path.join(
                                     self.pic_path, 'sample', filename)
+                                path_p = os.path.join(self.pic_path, 'preview', filename)
                                 if not self.cur_send_user in self.oldimg_lst:
                                     self.oldimg_lst[self.cur_send_user] = []
 
@@ -898,9 +903,8 @@ class Message:
                                         save_picture(myurl_img, path)
                                         if largesize:
                                             save_picture(sampleurl, path_s)
-                                        node4 = time.time()
-                                        lib.log("Get Picture from Yande use {}s".format(
-                                            round(node4-node3, 3)))
+                                    if not os.path.isfile(path_p):
+                                        save_picture(preurl, path_p)
                                     # 构造图片信息
                                     tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
                                                                          'source': res['source'], 'delay': delay, 'size': file_size, 'tags': ','.join(list(tags)[:20])}}

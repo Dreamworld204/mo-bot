@@ -12,10 +12,10 @@
         }
 
         img {
-            max-width: 100%; /* 设置图片最大宽度为父元素的100% */
-            height: auto; /* 高度自适应，保持宽高比 */
-            display: block; /* 去除图片底部的空白 */
-            margin: 0 auto; /* 水平居中显示 */
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
         }
 
         #chat-container {
@@ -93,6 +93,7 @@
             0% {
                 transform: rotate(0deg);
             }
+
             100% {
                 transform: rotate(360deg);
             }
@@ -116,8 +117,8 @@
     </div>
 
     <script>
+        var userInput = document.getElementById('user-input');
         function adjustInputHeight() {
-            var userInput = document.getElementById('user-input');
             userInput.style.height = 'auto'; // 重置高度
             userInput.style.height = userInput.scrollHeight + 'px'; // 动态设置高度
         }
@@ -181,6 +182,28 @@
         window.onload = scrollToBottom;
         // 将光标聚焦到输入框
         document.getElementById('user-input').focus();
+
+        // 按键绑定
+        var altPressed = false;
+        var sPressed = false;
+        userInput.addEventListener("keydown", function (event) {
+            if (event.key === "Alt") {
+                altPressed = true;
+            } else if (event.key === "s") {
+                sPressed = true;
+            }
+            if (altPressed && sPressed) {
+                sendMessage();
+            }
+        });
+
+        userInput.addEventListener("keyup", function (event) {
+            if (event.key === "Alt") {
+                altPressed = false;
+            } else if (event.key === "s") {
+                sPressed = false;
+            }
+        });
     </script>
 
 </body>
