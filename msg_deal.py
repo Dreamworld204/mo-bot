@@ -51,37 +51,55 @@ class Message:
 
 
     def deal(self, msg, sid = '0') -> str:
-        replay = "这是一个默认回复。"
+        reply = "这是一个默认回复。"
         if re.match('^干支[:：]?(.*)', msg):
             mt = re.match('干支[:：]?(.*)', msg)
             org = mt.group(1)
-            replay = self.ganzhi(org)[0]
+            reply = self.ganzhi(org)[0]
         elif re.match('下个吉时', msg):
-            replay = self.nextqmds()
+            reply = self.nextqmds()
+        elif re.match('^翻译\\S*[:：].*', msg):
+            mt = re.match('^翻译(\\S*)[:：](.*)', msg)
+            org = mt.group(2)
+            lan = mt.group(1)
+            reply = self.translate_zh(org, lan)
+        elif re.match('超级翻译[:：].*', msg):
+            mt = re.match('^超级翻译[:：](.*)', msg)
+            org = mt.group(1)
+            reply = self.translate_loop(org)
+        elif re.match('转为\\S+[:：].+', msg):
+            mt = re.match('转为(\\S+?)[:：](.+)', msg)
+            org = mt.group(2)
+            lan = mt.group(1)
+            reply = self.translate_assign(org, lan, msg)
         elif re.search('新图', msg):
             mt = re.search('新图\\*(\\d+)', msg)
             loop = 1
             if mt:
                 loop = min(int(mt.group(1)), 10)
-            replay = ""
+            reply = ""
             for i in range(loop):
                 lib.log(f'{i+1} / {loop}')
-                if replay!= "":
-                    replay += '\n'                
-                replay += self.send_img(1, sid, msg)
+                if reply!= "":
+                    reply += '\n'                
+                reply += self.send_img(1, sid, msg)
         elif re.search('热图', msg):
             mt = re.search('热图\\*(\\d+)', msg)
             loop = 1
             if mt:
                 loop = min(int(mt.group(1)), 10)
-            replay = ""
+            reply = ""
             for i in range(loop):
                 lib.log(f'{i+1} / {loop}')
-                if replay!= "":
-                    replay += '\n'                
-                replay += self.send_img(2, sid, msg)
+                if reply!= "":
+                    reply += '\n'                
+                reply += self.send_img(2, sid, msg)
+        elif re.match("\\S+是什么垃圾", msg):
+            mt = re.match('(\\S+)是什么垃圾', msg)
+            org = mt.group(1)
+            reply = self.garbage_classify(org)
        
-        return replay
+        return reply
 
     def getjieqi(self, date_q) -> str:
         ct = 0
@@ -412,6 +430,43 @@ class Message:
             if new_dict[ikey] > n:
                 return ikey
         return "error"
+    
+    def garbage_classify(self, org) -> str:
+
+        myurl = 'http://api.tianapi.com/txapi/lajifenlei/index'
+        key = '66faeca0e430e6febbe4790551188a10'
+        name = org
+        myurl = myurl + '?key=' + key + '&word=' + \
+            urllib.parse.quote(name, 'uft-8')
+
+        asw = "不知道" + org + "是什么垃圾"
+
+        try:
+            f = urllib.request.urlopen(myurl)
+
+            result_all = f.read()
+            result = json.loads(result_all)
+            if result['code'] == 200:
+                re_list = result['newslist']
+                asw_arr = []
+                for item in re_list:
+                    if item['name'] == name:
+                        asw_arr.clear()
+                        asw_arr.append(
+                            f'{item["name"]} 是 {ybtext.msg_garbage[item["type"]]}')
+                        break
+                    else:
+                        asw_arr.append(
+                            f'{item["name"]} 是 {ybtext.msg_garbage[item["type"]]}')
+                asw = "\n".join(asw_arr)
+            else:
+                x = 0
+                for s in bytes(name, encoding="utf8"):
+                    x = x + s
+                asw = "我觉得" + name + "是" + ybtext.msg_garbage[x % 4]
+        except Exception as e:
+            print(e)
+        return asw
     
     def translate_zh(self, org, lan) -> str:
         appid = '20200722000524186'
