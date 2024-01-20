@@ -13,7 +13,8 @@ __invitekey = 'momotalk'
 @app.route('/', methods=['GET','POST'])
 def dialog_main():
     session['nowurl'] = url_for('dialog_main')
-    username = request.cookies.get('user')   
+    username = request.cookies.get('user')
+    lib.log(request.cookies)
     if not username:
         return redirect(url_for('login'))
     lib.log(f'User Login: {username}')
@@ -30,7 +31,7 @@ def login():
         if username in user_password:
             flash(f'Last Logged in as {username}')
             response = redirect(session.get('nowurl', url_for('dialog_main')))
-            response.set_cookie('user', username)
+            response.set_cookie('user', username, max_age=30 * 24 * 3600)
             return response
         else:
             need_invite = True
