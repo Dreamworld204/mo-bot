@@ -14,7 +14,6 @@ __invitekey = 'momotalk'
 def dialog_main():
     session['nowurl'] = url_for('dialog_main')
     username = request.cookies.get('user')
-    lib.log(request.cookies)
     if not username:
         return redirect(url_for('login'))
     lib.log(f'User Login: {username}')
