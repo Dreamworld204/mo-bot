@@ -11,6 +11,7 @@ import socket
 import os
 import traceback
 import random
+import openai
 import requests
 
 import scrlib.mlib as lib
@@ -24,7 +25,8 @@ class Message:
     cur_send_user = ""
     imgdb = ImgDB()
 
-    def __init__(self):
+    def __init__(self, config={}):
+        self.config = config
         if os.path.exists('jieqi.json'):
             self.date_jieqi = json.load(open('jieqi.json'))
         else:
@@ -48,6 +50,9 @@ class Message:
                 self.oldimg_lst[one[2]] = []
             self.oldimg_lst[one[2]].append(one[0])
         #print("oldimg_lst", self.oldimg_lst)
+            
+        if config['chatgpt']['apikey']:
+            openai.api_key = config['chatgpt']['apikey']
 
 
     def deal(self, msg, sid = '0') -> str:
@@ -98,7 +103,9 @@ class Message:
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
             reply = self.garbage_classify(org)
-       
+        elif self.config['chatgpt']['enable'] and not re.match("^\\s*$", msg):
+            reply = self.chat_gpt(msg, id, 2)
+
         return reply
 
     def getjieqi(self, date_q) -> str:
@@ -106,7 +113,7 @@ class Message:
         idate = date_q
         jieqi = ""
         myurl = "http://api.tianapi.com/txapi/lunar/index"
-        key = "66faeca0e430e6febbe4790551188a10"
+        key = self.config['tianapi_key']
         while ct < 30:
             if idate not in self.date_jieqi:
                 iurl = myurl + '?key=' + key + '&date=' + idate
@@ -135,7 +142,7 @@ class Message:
         httpClient = None
 
         myurl = "http://api.tianapi.com/txapi/lunar/index"
-        key = "66faeca0e430e6febbe4790551188a10"
+        key = self.config['tianapi_key']
         date_q = org.strip()
         hour = 0
         min = 0
@@ -434,7 +441,7 @@ class Message:
     def garbage_classify(self, org) -> str:
 
         myurl = 'http://api.tianapi.com/txapi/lajifenlei/index'
-        key = '66faeca0e430e6febbe4790551188a10'
+        key = self.config['tianapi_key']
         name = org
         myurl = myurl + '?key=' + key + '&word=' + \
             urllib.parse.quote(name, 'uft-8')
@@ -469,8 +476,8 @@ class Message:
         return asw
     
     def translate_zh(self, org, lan) -> str:
-        appid = '20200722000524186'
-        secretKey = 'dcJeBxlKNqUMUXZPv_Mz'
+        appid = self.config['baidufanyi_appid']
+        secretKey = self.config['baidufanyi_key']
 
         httpClient = None
         myurl = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
@@ -510,8 +517,8 @@ class Message:
         return asw
 
     def transapi(self, q, lan, froml='auto') -> str:
-        appid = '20200722000524186'
-        secretKey = 'dcJeBxlKNqUMUXZPv_Mz'
+        appid = self.config['baidufanyi_appid']
+        secretKey = self.config['baidufanyi_key']
         httpClient = None
         myurl = 'http://api.fanyi.baidu.com/api/trans/vip/translate'
 
@@ -1033,6 +1040,90 @@ class Message:
                 i += 1
                 lib.log(f'proxy get error times {i}:\n{repr(e)}')
         raise Exception('Cannot connect to proxy')
+    
+    chat_ai_time = {'0': 0}
+    chat_lst = {}
+    ###mode: 1:completions 2:chat
+    def chat_gpt(self, org, id, mode = 2) -> str:
+        def chat_lst2prompt(chat_lst):
+            conversations = []
+            for index in chat_lst:
+                conversations.append(f"{index['role']}: {index['content']}")
+            conversations.append(f"{ybtext.gpt_name}:")
+            prompt = '\n'.join(conversations)
+            return prompt
+        target = id
+        if target not in self.chat_ai_time:
+            self.chat_ai_time[target] = 0
+        if target not in self.chat_lst:
+            self.chat_lst[target] = []
+        dialogue_life = 600
+        usr_name = 'user'
+        asw = self.random_str(ybtext.gpt_connect_error)
+        org = org.strip()
+        user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+                'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {openai.api_key}'}
+        proxies = {'http': 'http://127.0.0.1:7890',
+                   'https': 'http://127.0.0.1:7890'}
+        date = time.strftime("%Y-%m-%d")
+
+        if mode == 1:
+            sys_msg = ybtext.gpt_sys_msg[1].format(date) + '\n'
+            usr_name = str(id)
+        elif mode ==2:
+            sys_msg = [{'role': 'system', 'content': ybtext.gpt_sys_msg[0].format(date)}]
+
+        if (time.time() - self.chat_ai_time[target] > dialogue_life) or re.search(ybtext.gpt_keyword[0], org): #清空对话缓存
+            self.chat_lst[target] = []
+
+        self.chat_lst[target].append({"role": usr_name, 'content': org})
+
+        if mode == 1:
+            self.chat_lst[target] = self.chat_lst[target][-14:]
+            url = "https://api.openai.com/v1/completions"
+            prompt = chat_lst2prompt(self.chat_lst[target])
+            datas = {"model": "text-davinci-003", "prompt": sys_msg + prompt, "max_tokens": 512, "temperature": 0.8}
+        elif mode == 2:
+            self.chat_lst[target] = self.chat_lst[target][-20:]
+            url = "https://api.openai.com/v1/chat/completions"
+            datas = {"model": "gpt-3.5-turbo", "messages": sys_msg + self.chat_lst[target], "max_tokens": 512, "temperature": 0.8}
+
+        lib.log(f"Now chat size: {len(self.chat_lst[target])}")
+
+        try:
+            node1 = time.time()
+            response = requests.post(url, headers=user, proxies=proxies, timeout=60, json=datas)
+            timecost = math.ceil(time.time() - node1)
+            lib.log(f'ChatGPT Response in {timecost}s')
+            if response.status_code != 200:
+                lib.log("ChatGpt Api Error Response:",response)
+                self.chat_lst[target].pop()
+            else:
+                if mode == 1:
+                    gpt_msg = json.loads(response.text)["choices"][0]["text"]
+                    self.chat_lst[target].append({"role": ybtext.gpt_name, "content": gpt_msg.strip()})
+                elif mode == 2:
+                    gpt_msg = json.loads(response.text)["choices"][0]["message"]["content"]
+                    self.chat_lst[target].append({"role": "assistant", "content": gpt_msg.strip()})
+                
+                lib.log(f'Now Conversation Usage:{json.loads(response.text)["usage"]}')
+                
+                asw = gpt_msg.strip()
+                if re.search(ybtext.gpt_keyword[0], org):
+                    self.chat_lst[target] = []
+        except Exception as e:
+            lib.log(e)
+            self.chat_lst[target].pop()
+            if isinstance(e, socket.timeout):
+                asw = self.random_str(ybtext.msg_timeout)
+        if re.search(ybtext.gpt_keyword[1], org):
+            self.chat_ai_time[target] = 0
+        else:
+            self.chat_ai_time[target] = time.time()
+
+        return asw
 if __name__ == '__main__':
     qm = Message()
     

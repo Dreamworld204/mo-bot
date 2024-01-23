@@ -2,6 +2,7 @@
 import math
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash
 import os, re
+import json
 import msg_deal as msg
 import scrlib.mlib as lib
 from scrlib.userdb import UserDB
@@ -62,7 +63,7 @@ def getpic():
     if not username:
         return redirect(url_for('login'))
     
-    show_num = 10 # 一页显示的数量
+    show_num = config['pic']['show_num'] or 10 # 一页显示的数量
     page = int(request.args.get('page', 1))
     pic_path = 'static/pic/'
     preview_path = 'static/pic/preview/'
@@ -107,10 +108,11 @@ def creatrandomstr(lenth=16):
     print(random_key)
 
 if __name__ == '__main__':
-    qm = msg.Message()
+    config = json.load(open("config.json"))
+    qm = msg.Message(config)
     userdb = UserDB()
     user_password = {}
     for one in userdb.get_all_user():
         user_password[one[0]] = one[1]
 
-    app.run(host='0.0.0.0',port='2333')
+    app.run(host='0.0.0.0',port=config['server']['port'])

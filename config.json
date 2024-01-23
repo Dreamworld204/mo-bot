@@ -1,0 +1,15 @@
+{
+	"server":{
+		"port": 2333
+	},
+	"pic":{
+		"show_num": 20
+	},
+	"chatgpt":{
+		"enable": false,
+		"apikey": ""
+	},
+	"tianapi_key": "",
+	"baidufanyi_appid": "",
+	"baidufanyi_key": ""
+}
