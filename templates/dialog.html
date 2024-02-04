@@ -76,6 +76,11 @@
             /* 设置按钮与右侧的间距 */
         }
 
+        #clear-button {
+            width: 100px;
+            margin-left: auto;
+        }
+
         #waiting-message {
             text-align: center;
             /* 让文字居中 */
@@ -107,17 +112,21 @@
         <button id="logout-button" onclick="logout()">登出</button>
     </div>
     <div id="chat-container">
-        <div class="message default" id="chat-output"></div>
+        <div class="message default" id="chat-output">{{history|safe}}</div>
         <div id="waiting-message" class="message bot-message loading">
             <i id="waiting-icon" class="fas fa-spinner fa-spin"></i>
             等待中...
         </div>
         <textarea id="user-input" placeholder="输入消息..." rows="3"></textarea>
-        <button id="send-button" onclick="sendMessage()">发送</button>
+        <div style="display: flex; justify-content: flex-end;">
+            <button id="send-button" onclick="sendMessage()">发送</button>
+            <button id="clear-button" onclick="clearHistory()">清屏</button>
+        </div>
     </div>
 
     <script>
         var userInput = document.getElementById('user-input');
+        var chatOutput = document.getElementById('chat-output');
         function adjustInputHeight() {
             userInput.style.height = 'auto'; // 重置高度
             userInput.style.height = userInput.scrollHeight + 'px'; // 动态设置高度
@@ -135,10 +144,9 @@
         }
 
         function sendMessage() {
-            var userInput = document.getElementById('user-input').value;
             var sendButton = document.getElementById('send-button');
             var waitingMessage = document.getElementById('waiting-message');
-            var chatOutput = document.getElementById('chat-output');
+            var userInput = document.getElementById('user-input').value;
 
             sendButton.disabled = true;
             waitingMessage.style.display = 'block';
@@ -174,6 +182,18 @@
                     sendButton.isabled = false;
                     waitingMessage.style.display = 'none';
                 });
+        }
+
+        function clearHistory() {
+            chatOutput.innerHTML = ''
+
+            fetch('/clear_history', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: '',
+            })
         }
 
         // 在输入框内容变化时调整高度

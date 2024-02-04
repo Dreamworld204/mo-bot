@@ -18,7 +18,12 @@ def dialog_main():
     if not username:
         return redirect(url_for('login'))
     lib.log(f'User Login: {username}')
-    return render_template('dialog.html', username = username)
+    if username not in user_history:
+        user_history[username] = []
+
+    his = '\n'.join(user_history[username])
+
+    return render_template('dialog.html', username = username, history = his)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -94,7 +99,21 @@ def process_input():
     #回复
     bot_reply = qm.deal(user_input, userid)
 
+    if userid not in user_history:
+        user_history[userid] = []
+    user_history[userid].append('<div class="message user-message">' + user_input.replace('\n', '<br>') + '</div>')
+    user_history[userid].append('<div class="message bot-message">' + bot_reply.replace('\n', '<br>') + '</div>')
     return jsonify({'bot_reply': bot_reply})
+
+@app.route('/clear_history', methods=['POST'])
+def clear_history():
+    userid = request.cookies.get('user', "default")
+    if not userid:
+        return
+    user_history[userid] = []
+    return jsonify({})
+
+    
 
 def register(user, password):
     user_password[user] = password
@@ -112,6 +131,7 @@ if __name__ == '__main__':
     qm = msg.Message(config)
     userdb = UserDB()
     user_password = {}
+    user_history = {}
     for one in userdb.get_all_user():
         user_password[one[0]] = one[1]
 
