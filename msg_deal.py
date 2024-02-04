@@ -103,6 +103,10 @@ class Message:
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
             reply = self.garbage_classify(org)
+        elif re.match('^执行[:：](.*)', msg):
+            mt = re.match('执行[:：](.*)', msg)
+            org = mt.group(1)
+            reply = self.cast_as_eval(org)
         elif self.config['chatgpt']['enable'] and not re.match("^\\s*$", msg):
             reply = self.chat_gpt(msg, id, 2)
 
@@ -1124,6 +1128,42 @@ class Message:
             self.chat_ai_time[target] = time.time()
 
         return asw
+    def image_map(self, key: str, value: str):
+        key = key.strip()
+        value = value.strip().lower()
+        if key in self.map_tags:
+            new_v = []
+            v = self.map_tags[key]
+            if type(v) == str:
+                new_v.append(v)
+            elif type(v) == list:
+                new_v = v
+            else:
+                print("add_tag map_tag format error")
+                return 'add_tag map_tag format error'
+            if value not in new_v:
+                new_v.append(value)
+                self.map_tags[key] = new_v
+        else:
+            self.map_tags[key] = value
+        json.dump(self.map_tags, open('tags.json', 'w', encoding='utf-8'))
+        return ""
+    def cast_as_eval(self, org) -> str:
+        code = org.strip()
+        code = code.replace('^', '**')
+        import html
+        code = html.unescape(code)
+        print(time.strftime("[%Y-%m-%d %H:%M:%S]",
+              time.localtime()), "Cast as eval:", code)
+        answer = ''
+        try:
+            answer = str(eval(code))
+            if answer == '':
+                answer = 'success'
+        except Exception as e:
+            traceback.print_exc()
+            answer = "执行失败"
+        return answer
 if __name__ == '__main__':
     qm = Message()
     
