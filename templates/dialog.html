@@ -211,9 +211,13 @@
                 altPressed = true;
             } else if (event.key === "s") {
                 sPressed = true;
+            } else if (event.key === "c"){
+                cPressed = true;
             }
             if (altPressed && sPressed) {
                 sendMessage();
+            } else if (altPressed && cPressed) {
+                clearHistory();
             }
         });
 
@@ -222,6 +226,8 @@
                 altPressed = false;
             } else if (event.key === "s") {
                 sPressed = false;
+            } else if (event.key === "c"){
+                cPressed = false;
             }
         });
     </script>
