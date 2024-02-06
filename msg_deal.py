@@ -51,7 +51,7 @@ class Message:
             self.oldimg_lst[one[2]].append(one[0])
         #print("oldimg_lst", self.oldimg_lst)
             
-        if config['chatgpt']['apikey']:
+        if 'chatgpt' in config and config['chatgpt']['apikey']:
             openai.api_key = config['chatgpt']['apikey']
 
 
@@ -638,9 +638,14 @@ class Message:
                     tips += ('\n' + ybtext.msg_size[0].format(file_size))
                 else:
                     tips += ('\n' + ybtext.msg_size[1].format(file_size))
-            if ban:
-                imginfo = ybtext.msg_skip[4].format(tmp_msg['data']['file'], tmp_msg['data']['source'])
-            asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
+            # if ban:
+            #     imginfo = ybtext.msg_skip[4].format(tmp_msg['data']['file'], tmp_msg['data']['source'])
+            if 'skip' in tmp_msg['data']:
+                sLink = f'<a href="{tmp_msg["data"]["url"]}" target="_blank">{tmp_msg["data"]["file"]}</a>'
+                tips += ('\n' + ybtext.msg_skip[0].format(sLink))
+                asw = tips 
+            else:
+                asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
         else:
             asw = tmp_msg
         return asw
@@ -1165,5 +1170,5 @@ class Message:
             answer = "执行失败"
         return answer
 if __name__ == '__main__':
-    qm = Message()
+    qm = Message({})
     

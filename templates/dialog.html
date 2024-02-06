@@ -20,21 +20,30 @@
 
         #chat-container {
             width: 60vw;
-            margin: 50px auto;
+            margin: auto;
+            margin-right: 50;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
             overflow-y: auto;
             /* 当内容超出容器高度时启用垂直滚动条 */
-            max-height: 80vh;
-            /* 设置最大高度为80%的视口高度 */
+            max-height: 70vh;
+            /* 设置最大高度为70%的视口高度 */
             display: flex;
             flex-direction: column;
             /* 垂直布局 */
         }
 
+        #chat-toolbox {
+            width: 60vw;
+            margin: auto;
+            margin-right: 50;
+            padding: 10px;
+            flex-direction: column;
+        }
+
         #user-input {
-            width: calc(100% - 20px);
+            width: calc(100%);
             /* 宽度减去左右 padding */
             box-sizing: border-box;
             /* 让 padding 不影响元素宽度 */
@@ -111,16 +120,20 @@
         <label for="username">Now User:{{username}}</label>
         <button id="logout-button" onclick="logout()">登出</button>
     </div>
-    <div id="chat-container">
-        <div class="message default" id="chat-output">{{history|safe}}</div>
-        <div id="waiting-message" class="message bot-message loading">
-            <i id="waiting-icon" class="fas fa-spinner fa-spin"></i>
-            等待中...
+    <div id="dialogbox" style="margin-top: 20px;" >
+        <div id="chat-container">
+            <div class="message default" id="chat-output">{{history|safe}}</div>
+            <div id="waiting-message" class="message bot-message loading">
+                <i id="waiting-icon" class="fas fa-spinner fa-spin"></i>
+                等待中...
+            </div>
         </div>
-        <textarea id="user-input" placeholder="输入消息..." rows="3"></textarea>
-        <div style="display: flex; justify-content: flex-end;">
-            <button id="send-button" onclick="sendMessage()">发送</button>
-            <button id="clear-button" onclick="clearHistory()">清屏</button>
+        <div id="chat-toolbox">
+            <textarea id="user-input" placeholder="输入消息..." rows="3"></textarea>
+            <div style="display: flex; justify-content: flex-end;">
+                <button id="send-button" onclick="sendMessage()">发送</button>
+                <button id="clear-button" onclick="clearHistory()">清屏</button>
+            </div>
         </div>
     </div>
 
