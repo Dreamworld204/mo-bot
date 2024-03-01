@@ -72,6 +72,22 @@
             <a href="./pic?page={{ total_page }}">{{total_page}}</a>
         {% endif %}
     </div>
+
+    <script>
+        now_page = {{now_page}}
+        total_page = {{total_page}}
+
+        document.addEventListener('keydown', function (event) {
+            // 左箭头键
+            if (event.keyCode === 37 && now_page > 1) {
+                window.location.href = "./pic?page=" + (now_page - 1);
+            }
+            // 右箭头键
+            else if (event.keyCode === 39 && now_page < total_page) {
+                window.location.href = "./pic?page=" + (now_page + 1);
+            }
+        });
+    </script>
 </body>
 
 </html>
