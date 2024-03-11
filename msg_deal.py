@@ -34,7 +34,7 @@ class Message:
         if os.path.exists('tags.json'):
             self.map_tags = json.load(open('tags.json', encoding='utf-8'))
             self.map_tags.update(ybtext.map_tags)
-            lib.log(self.map_tags)
+            #lib.log(self.map_tags)
         else:
             json.dump(ybtext.map_tags, open(
                 'tags.json', 'w', encoding='utf-8'))
@@ -55,8 +55,9 @@ class Message:
             openai.api_key = config['chatgpt']['apikey']
 
 
-    def deal(self, msg, sid = '0') -> str:
+    def deal(self, msg, sid = '0') :
         reply = "这是一个默认回复。"
+        nextorder = None
         if re.match('^干支[:：]?(.*)', msg):
             mt = re.match('干支[:：]?(.*)', msg)
             org = mt.group(1)
@@ -79,26 +80,28 @@ class Message:
             reply = self.translate_assign(org, lan, msg)
         elif re.search('新图', msg):
             mt = re.search('新图\\*(\\d+)', msg)
-            loop = 1
+            remain = 1
             if mt:
-                loop = min(int(mt.group(1)), 10)
+                remain = min(int(mt.group(1)), 10)
             reply = ""
-            for i in range(loop):
-                lib.log(f'{i+1} / {loop}')
-                if reply!= "":
-                    reply += '\n'                
-                reply += self.send_img(1, sid, msg)
+            lib.log(f'等待发送新图: {remain}')
+            
+            reply += self.send_img(1, sid, msg)
+            if remain > 1:
+                reply += f"\n剩余{remain - 1}张"
+                nextorder = f'新图*{remain - 1}'
         elif re.search('热图', msg):
             mt = re.search('热图\\*(\\d+)', msg)
-            loop = 1
+            remain = 1
             if mt:
-                loop = min(int(mt.group(1)), 10)
+                remain = min(int(mt.group(1)), 10)
             reply = ""
-            for i in range(loop):
-                lib.log(f'{i+1} / {loop}')
-                if reply!= "":
-                    reply += '\n'                
-                reply += self.send_img(2, sid, msg)
+            lib.log(f'等待发送热图: {remain}')
+            
+            reply += self.send_img(2, sid, msg)
+            if remain > 1:
+                reply += f"\n剩余{remain - 1}张"
+                nextorder = f'热图*{remain - 1}'
         elif re.match("\\S+是什么垃圾", msg):
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
@@ -110,7 +113,7 @@ class Message:
         elif self.config['chatgpt']['enable'] and not re.match("^\\s*$", msg):
             reply = self.chat_gpt(msg, id, 2)
 
-        return reply
+        return reply, nextorder
 
     def getjieqi(self, date_q) -> str:
         ct = 0
@@ -1169,6 +1172,28 @@ class Message:
             traceback.print_exc()
             answer = "执行失败"
         return answer
+    def get_tophub(self) -> str:
+        head = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+                'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+        url = "https://www.baidu.com"
+
+        try:
+            res = requests.request('GET', url, headers=head)
+            htmltext = res.text
+            
+            with open('temphtml.txt', 'wb') as ff:
+                ff.write(res.content)
+            matchs = re.findall('\{"card_title":.*?\}', htmltext)
+            
+            if len(matchs) > 0:
+                for strTop in matchs:
+                    jTop = json.loads(strTop)
+                    print(jTop['card_title'], urllib.parse.unquote(jTop['linkurl']))
+        except Exception as e:
+            print(e)
+            if isinstance(e, socket.timeout):
+                print("socket timeout")
 if __name__ == '__main__':
     qm = Message({})
+    qm.get_tophub()
     

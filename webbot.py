@@ -97,7 +97,7 @@ def process_input():
     user_input = request.form['user_input']
     
     #回复
-    bot_reply = qm.deal(user_input, userid)
+    bot_reply, nextorder = qm.deal(user_input, userid)
 
     if userid not in user_history:
         user_history[userid] = []
@@ -105,7 +105,7 @@ def process_input():
     user_history[userid].append('<div class="message bot-message">' + bot_reply.replace('\n', '<br>') + '</div>')
     if len(user_history) > 110:
         user_history[userid] = user_history[userid][100:]
-    return jsonify({'bot_reply': bot_reply})
+    return jsonify({'bot_reply': bot_reply, 'nextorder': nextorder})
 
 @app.route('/clear_history', methods=['POST'])
 def clear_history():
