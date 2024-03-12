@@ -168,9 +168,10 @@
             chatOutput.innerHTML += '<div class="message user-message">' + userInput.replace(/\n/g, '<br>') + '</div>';
             scrollToBottom();
             
-            sendNext(userInput);
+            sendNext(userInput, true);
 
-            function sendNext(sMessage){
+            // bUser 是用户主动行为
+            function sendNext(sMessage, bUser){
                 // 发送用户输入到服务器
                 waitingMessage.style.display = 'block';
                 fetch('/process_input', {
@@ -178,7 +179,8 @@
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: 'user_input=' + encodeURIComponent(sMessage),
+                    body: 'user_input=' + encodeURIComponent(sMessage)
+                        + '&user_action=' + encodeURIComponent(bUser),
                 })
                     .then(response => response.json())
                     .then(data => {
@@ -192,10 +194,10 @@
                         document.getElementById('user-input').focus();
     
                         if(data.nextorder){
-                            sendNext(data.nextorder)
-                        }else{
-                            sendButton.disabled = false;
+                            sendNext(data.nextorder, false)
                         }
+                        sendButton.disabled = false;
+                        
                     })
                     .catch(error => {
                         console.error('Error sending message:', error);
@@ -237,9 +239,9 @@
                 cPressed = true;
             }
             if (altPressed && sPressed) {
-                sendMessage();
+                document.getElementById('send-button').click();
             } else if (altPressed && cPressed) {
-                clearHistory();
+                document.getElementById('clear-button').click();
             }
         });
 

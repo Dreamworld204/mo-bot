@@ -55,7 +55,7 @@ class Message:
             openai.api_key = config['chatgpt']['apikey']
 
 
-    def deal(self, msg, sid = '0') :
+    def deal(self, msg, sid = '0', bUser = True) :
         reply = "这是一个默认回复。"
         nextorder = None
         if re.match('^干支[:：]?(.*)', msg):
@@ -84,10 +84,12 @@ class Message:
             if mt:
                 remain = min(int(mt.group(1)), 10)
             reply = ""
+            if bUser:
+                self.stopimg = False
             lib.log(f'等待发送新图: {remain}')
             
             reply += self.send_img(1, sid, msg)
-            if remain > 1:
+            if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
                 nextorder = f'新图*{remain - 1}'
         elif re.search('热图', msg):
@@ -96,12 +98,17 @@ class Message:
             if mt:
                 remain = min(int(mt.group(1)), 10)
             reply = ""
+            if bUser:
+                self.stopimg = False
             lib.log(f'等待发送热图: {remain}')
             
             reply += self.send_img(2, sid, msg)
-            if remain > 1:
+            if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
                 nextorder = f'热图*{remain - 1}'
+        elif re.match('^停+$', msg):
+            self.stopimg = True
+            reply = ybtext.msg_stop[0]
         elif re.match("\\S+是什么垃圾", msg):
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
