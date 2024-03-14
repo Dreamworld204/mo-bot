@@ -79,10 +79,12 @@ class Message:
             lan = mt.group(1)
             reply = self.translate_assign(org, lan, msg)
         elif re.search('新图', msg):
-            mt = re.search('新图\\*(\\d+)', msg)
+            mt = re.search('(\\S*)新图\\*(\\d+)', msg)
+            key = ""
             remain = 1
             if mt:
-                remain = min(int(mt.group(1)), 10)
+                key = mt.group(1)
+                remain = min(int(mt.group(2)), 10)
             reply = ""
             if bUser:
                 self.stopimg = False
@@ -91,12 +93,14 @@ class Message:
             reply += self.send_img(1, sid, msg)
             if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
-                nextorder = f'新图*{remain - 1}'
+                nextorder = f'{key}新图*{remain - 1}'
         elif re.search('热图', msg):
-            mt = re.search('热图\\*(\\d+)', msg)
+            mt = re.search('(\\S*)热图\\*(\\d+)', msg)
+            key = ""
             remain = 1
             if mt:
-                remain = min(int(mt.group(1)), 10)
+                key = mt.group(1)
+                remain = min(int(mt.group(2)), 10)
             reply = ""
             if bUser:
                 self.stopimg = False
@@ -105,7 +109,7 @@ class Message:
             reply += self.send_img(2, sid, msg)
             if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
-                nextorder = f'热图*{remain - 1}'
+                nextorder = f'{key}热图*{remain - 1}'
         elif re.match('^停+$', msg):
             self.stopimg = True
             reply = ybtext.msg_stop[0]
