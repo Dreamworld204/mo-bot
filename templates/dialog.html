@@ -140,6 +140,35 @@
     <script>
         var userInput = document.getElementById('user-input');
         var chatOutput = document.getElementById('chat-output');
+        var inputList = [];
+        var nowIndex = 0;
+        function recordNewInput(input){
+            var bFind = false;
+            for(i=0; i<inputList.length; i++){
+                if(inputList[i] == input){
+                    bFind = true;
+                }
+                if(bFind){
+                    inputList[i] = (i < inputList.length - 1)? inputList[i+1]: input;
+                }
+            }
+            if(!bFind){
+                inputList.push(input);
+                if(inputList.length > 10){
+                    inputList.shift();
+                }
+            }
+            nowIndex = inputList.length;
+        }
+        function getPreInput(){
+            nowIndex = nowIndex > 0? nowIndex - 1: 0;
+            return (inputList.length == 0)? "": inputList[nowIndex];
+        }
+        function getNextInput(){
+            nowIndex = nowIndex < inputList.length? nowIndex + 1: inputList.length;
+            return (nowIndex == inputList.length)? "": inputList[nowIndex];
+        }
+        
         function adjustInputHeight() {
             userInput.style.height = 'auto'; // 重置高度
             userInput.style.height = userInput.scrollHeight + 'px'; // 动态设置高度
@@ -161,15 +190,18 @@
             var waitingMessage = document.getElementById('waiting-message');
             var userInput = document.getElementById('user-input').value;
 
+            if(userInput == ""){
+                return;
+            }
             sendButton.disabled = true;
 
             // 将输入内容移到聊天框
             document.getElementById('user-input').value = '';
             chatOutput.innerHTML += '<div class="message user-message">' + userInput.replace(/\n/g, '<br>') + '</div>';
+            recordNewInput(userInput);
             scrollToBottom();
             
             sendNext(userInput, true);
-
             // bUser 是用户主动行为
             function sendNext(sMessage, bUser){
                 // 发送用户输入到服务器
@@ -187,9 +219,6 @@
                         // 将服务器返回的回复添加到聊天框
                         chatOutput.innerHTML += '<div class="message bot-message">' + data.bot_reply.replace(/\n/g, '<br>') + '</div>';
     
-                        adjustInputHeight();
-                        scrollToBottom();
-    
                         waitingMessage.style.display = 'none';
                         document.getElementById('user-input').focus();
     
@@ -197,7 +226,9 @@
                             sendNext(data.nextorder, false)
                         }
                         sendButton.disabled = false;
-                        
+
+                        adjustInputHeight();
+                        scrollToBottom();
                     })
                     .catch(error => {
                         console.error('Error sending message:', error);
@@ -230,6 +261,8 @@
         var altPressed = false;
         var sPressed = false;
         var cPressed = false;
+        var upPressed = false;
+        var downPressed = false;
         userInput.addEventListener("keydown", function (event) {
             if (event.key === "Alt") {
                 altPressed = true;
@@ -237,11 +270,19 @@
                 sPressed = true;
             } else if (event.key === "c"){
                 cPressed = true;
+            } else if (event.key === "ArrowUp"){
+                upPressed = true;
+            } else if (event.key === "ArrowDown"){
+                downPressed = true;
             }
             if (altPressed && sPressed) {
                 document.getElementById('send-button').click();
             } else if (altPressed && cPressed) {
                 document.getElementById('clear-button').click();
+            } else if (altPressed && upPressed) {
+                userInput.value = getPreInput();
+            } else if (altPressed && downPressed){
+                userInput.value = getNextInput();
             }
         });
 
@@ -252,6 +293,10 @@
                 sPressed = false;
             } else if (event.key === "c"){
                 cPressed = false;
+            } else if (event.key === "ArrowUp"){
+                upPressed = false;
+            } else if (event.key === "ArrowDown"){
+                downPressed = false;
             }
         });
     </script>
