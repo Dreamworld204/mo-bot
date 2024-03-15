@@ -7,22 +7,59 @@
 </head>
 <body>
     <h2>Upload a File</h2>
-    <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
-        <input type="file" name="file" id="fileInput" required>
-        <button type="submit">Upload</button>
-    </form>
+    <div id="dropArea" style="border: 2px dashed #ccc; padding: 20px;">
+        <p>Drag and drop files here</p>
+        <p id="selectedFileName"></p>
+        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" id="fileInput" style="display: none;">
+            <button type="button" onclick="document.getElementById('fileInput').click();">Select Files</button>
+        </form>
+        <button type="button" id="uploadButton" style="display: none;" onclick="uploadFile()">Upload</button>
+    </div>
 
     <div id="message"></div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', function(event) {
+        var dropArea = document.getElementById('dropArea');
+        var selectedFileNameDisplay = document.getElementById('selectedFileName');
+        var uploadButton = document.getElementById('uploadButton');
+
+        dropArea.addEventListener('dragover', function(event) {
             event.preventDefault();
+            dropArea.style.border = '2px dashed #aaa';
+        });
 
-            var form = event.target;
-            var formData = new FormData(form);
-            document.getElementById('message').textContent = 'Uploading.....'
+        dropArea.addEventListener('dragleave', function(event) {
+            event.preventDefault();
+            dropArea.style.border = '2px dashed #ccc';
+        });
 
-            fetch(form.action, {
+        dropArea.addEventListener('drop', function(event) {
+            event.preventDefault();
+            dropArea.style.border = '2px dashed #ccc';
+
+            var files = event.dataTransfer.files;
+            if (files.length > 0) {
+                var fileName = files[0].name;
+                selectedFileNameDisplay.textContent = fileName;
+                uploadButton.style.display = 'block';
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            var files = event.target.files;
+            if (files.length > 0) {
+                var fileName = files[0].name;
+                selectedFileNameDisplay.textContent = fileName;
+                uploadButton.style.display = 'block';
+            }
+        });
+
+        function uploadFile() {
+            var formData = new FormData(document.getElementById('uploadForm'));
+            document.getElementById('message').textContent = 'Uploading.....';
+
+            fetch('/upload', {
                 method: 'POST',
                 body: formData
             })
@@ -34,10 +71,12 @@
                 console.error('Error:', error.message);
                 document.getElementById('message').textContent = 'An error occurred while uploading the file';
             })
-            .finally(() =>{
+            .finally(() => {
                 document.getElementById('fileInput').value = '';
+                selectedFileNameDisplay.textContent = '';
+                uploadButton.style.display = 'none';
             });
-        });
+        }
     </script>
 </body>
 </html>
