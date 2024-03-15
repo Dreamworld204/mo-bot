@@ -10,18 +10,20 @@
     <div id="dropArea" style="border: 2px dashed #ccc; padding: 20px;">
         <p>Drag and drop files here</p>
         <p id="selectedFileName"></p>
-        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data" style="display: none;">
             <input type="file" name="file" id="fileInput" style="display: none;">
-            <button type="button" onclick="document.getElementById('fileInput').click();">Select Files</button>
-        </form>
-        <button type="button" id="uploadButton" style="display: none;" onclick="uploadFile()">Upload</button>
+        </form>   
     </div>
-
+    <div style="padding: 20px;">
+        <button type="button" id="uploadButton" style="display: none;" onclick="uploadFile()" >Upload</button>
+    </div>
     <div id="message"></div>
 
     <script>
         var dropArea = document.getElementById('dropArea');
         var selectedFileNameDisplay = document.getElementById('selectedFileName');
+        var uploadForm = document.getElementById('uploadForm');
+        var fileInput = document.getElementById('fileInput');
         var uploadButton = document.getElementById('uploadButton');
 
         dropArea.addEventListener('dragover', function(event) {
@@ -42,21 +44,27 @@
             if (files.length > 0) {
                 var fileName = files[0].name;
                 selectedFileNameDisplay.textContent = fileName;
+                uploadForm.style.display = 'block';
                 uploadButton.style.display = 'block';
             }
         });
 
-        document.getElementById('fileInput').addEventListener('change', function(event) {
+        dropArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function(event) {
             var files = event.target.files;
             if (files.length > 0) {
                 var fileName = files[0].name;
                 selectedFileNameDisplay.textContent = fileName;
+                uploadForm.style.display = 'block';
                 uploadButton.style.display = 'block';
             }
         });
 
         function uploadFile() {
-            var formData = new FormData(document.getElementById('uploadForm'));
+            var formData = new FormData(uploadForm);
             document.getElementById('message').textContent = 'Uploading.....';
 
             fetch('/upload', {
@@ -72,8 +80,9 @@
                 document.getElementById('message').textContent = 'An error occurred while uploading the file';
             })
             .finally(() => {
-                document.getElementById('fileInput').value = '';
+                fileInput.value = '';
                 selectedFileNameDisplay.textContent = '';
+                uploadForm.style.display = 'none';
                 uploadButton.style.display = 'none';
             });
         }
