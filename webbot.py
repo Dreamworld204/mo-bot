@@ -4,6 +4,7 @@ from flask import Flask, render_template, redirect, url_for, request, jsonify, s
 import os, re
 import json
 import msg_deal as msg
+from scrlib.mfile import MFile
 import scrlib.mlib as lib
 from scrlib.userdb import UserDB
 
@@ -116,11 +117,39 @@ def clear_history():
     user_history[userid] = []
     return jsonify({})
 
+@app.route('/cloud', methods=['GET', 'POST'])
+def filecloud():
+    username = request.cookies.get('user')
+    session['nowurl'] = url_for('filecloud')
+    if not username:
+        return redirect(url_for('login'))
+    return render_template('filecloud.html')
+
+@app.route('/upload', methods=['POST'])
+def uploadfile():
+    username = request.cookies.get('user')
+    if not username:
+        return jsonify({'error': 'User not login'})
     
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'})
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'})
+    
+    if fs.savefile(file):
+        return jsonify({'message': 'File successfully uploaded'})
+    else:
+        return jsonify({'error': 'File not allowed'})
+    
+
 
 def register(user, password):
     user_password[user] = password
     userdb.insert(user, password)
+
 
 
 def creatrandomstr(lenth=16):
@@ -132,6 +161,7 @@ def creatrandomstr(lenth=16):
 if __name__ == '__main__':
     config = json.load(open("config.json"))
     qm = msg.Message(config)
+    fs = MFile(config)
     userdb = UserDB()
     user_password = {}
     user_history = {}
