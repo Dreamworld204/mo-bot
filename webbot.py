@@ -123,33 +123,53 @@ def filecloud():
     session['nowurl'] = url_for('filecloud')
     if not username:
         return redirect(url_for('login'))
-    return render_template('filecloud.html')
+    filelst = fs.getFilelist(username)
+    filelst = sorted(filelst, key=lambda x: x['time'], reverse=True)
 
-@app.route('/upload', methods=['POST'])
+    return render_template('filecloud.html', files = filelst)
+
+@app.route('/uploadfile', methods=['POST'])
 def uploadfile():
     username = request.cookies.get('user')
     if not username:
         return jsonify({'error': 'User not login'})
     
-    if 'file' not in request.files:
+    files = request.files
+    if len(files) == 0:
         return jsonify({'error': 'No file part'})
-
-    file = request.files['file']
-
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'})
     
-    if fs.savefile(file):
-        return jsonify({'message': 'File successfully uploaded'})
+    nownum, nowsize = fs.getUsage(username)
+    
+    num_limit = config['cloud']['num_limit'] or 10
+    capacity = config['cloud']['capacity'] or 1024 * 1024 * 1024
+    for filename in files:
+        file = files[filename]
+        nownum += 1
+        nowsize += len(file.read())
+        if nownum > num_limit:
+            return jsonify({'error': f'Saved files number over limit: {num_limit}'})
+        if nowsize > capacity:
+            return jsonify({'error': 'Saved files size over limit'})
+
+        if not fs.savefile(file, username):
+            return jsonify({'error': f'File: {filename} not allowed'})
+    return jsonify({'message': 'File successfully uploaded'})
+
+@app.route('/deletefile', methods=['POST'])
+def deletefile():
+    username = request.cookies.get('user')
+    if not username:
+        return jsonify({'error': 'User not login'})
+    
+    filename = request.form['filename']
+    if fs.deletefile(filename, username):
+        return jsonify({'message': 'File successfully deleted'})
     else:
-        return jsonify({'error': 'File not allowed'})
-    
-
+        return jsonify({'error': f'File: {filename} not find'})
 
 def register(user, password):
     user_password[user] = password
     userdb.insert(user, password)
-
 
 
 def creatrandomstr(lenth=16):

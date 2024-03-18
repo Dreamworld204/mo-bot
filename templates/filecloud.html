@@ -3,28 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload</title>
+    <title>File Cloud</title>
+    <style>
+        table {
+            border-collapse: collapse; /* 合并边框 */
+            border-spacing: 2px; /* 设置行列间距 */
+        }
+
+        th, td {
+            padding: 8px; /* 设置单元格内边距 */
+            border: 1px solid #ddd; /* 设置单元格边框 */
+        }
+
+        th {
+            text-align: left; /* 表头文本左对齐 */
+        }
+    </style>
 </head>
 <body>
-    <h2>Upload a File</h2>
+    <h4>File List</h4>
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Time</th>
+                <th>Operate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td><a href="{{ file.path }}" download>{{ file.name }}</a></td>
+                <td>{{ file.size }}</td>
+                <td>{{ file.time }}</td>
+                <td><button onclick="deleteFile('{{ file.name }}')" style="color: rgb(92, 12, 12); display: block; margin: 0 auto;">删除</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h4>Upload File</h4>
     <div id="dropArea" style="border: 2px dashed #ccc; padding: 20px;">
         <p>Drag and drop files here</p>
-        <p id="selectedFileName"></p>
-        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data" style="display: none;">
-            <input type="file" name="file" id="fileInput" style="display: none;">
-        </form>   
+        <form id="uploadForm" action="/upload" method="POST" enctype="multipart/form-data">
+            <input type="file" name="file" id="fileInput" style="display: none;" multiple>
+        </form>
     </div>
-    <div style="padding: 20px;">
-        <button type="button" id="uploadButton" style="display: none;" onclick="uploadFile()" >Upload</button>
-    </div>
+
     <div id="message"></div>
 
     <script>
         var dropArea = document.getElementById('dropArea');
-        var selectedFileNameDisplay = document.getElementById('selectedFileName');
-        var uploadForm = document.getElementById('uploadForm');
-        var fileInput = document.getElementById('fileInput');
-        var uploadButton = document.getElementById('uploadButton');
+
+        window.onload = function() {
+            var message = localStorage.getItem('message');
+            if (message) {
+                document.getElementById('message').textContent = message;
+                // 清除本地存储中的消息
+                localStorage.removeItem('message');
+            }
+        };
 
         dropArea.addEventListener('dragover', function(event) {
             event.preventDefault();
@@ -40,51 +78,73 @@
             event.preventDefault();
             dropArea.style.border = '2px dashed #ccc';
 
+            var maxFileCount = 5;
+            var maxFileSize = 1024 * 1024 * 1024;
+
             var files = event.dataTransfer.files;
-            if (files.length > 0) {
-                var fileName = files[0].name;
-                selectedFileNameDisplay.textContent = fileName;
-                uploadForm.style.display = 'block';
-                uploadButton.style.display = 'block';
+            if (files.length > maxFileCount) {
+                alert('You can only upload up to ' + maxFileCount + ' files.');
+                return;
             }
-        });
-
-        dropArea.addEventListener('click', function() {
-            fileInput.click();
-        });
-
-        fileInput.addEventListener('change', function(event) {
-            var files = event.target.files;
-            if (files.length > 0) {
-                var fileName = files[0].name;
-                selectedFileNameDisplay.textContent = fileName;
-                uploadForm.style.display = 'block';
-                uploadButton.style.display = 'block';
+            var formData = new FormData();
+            for (var i = 0; i < files.length; i++) {
+                if (files[i].size > maxFileSize) {
+                    alert('File "' + files[i].name + '" exceeds the maximum file size of 1 GB.');
+                    return;
+                }
+                if (files[i] instanceof File) {
+                    formData.append(files[i].name, files[i]);
+                }
             }
+
+            uploadFile(formData);
         });
 
-        function uploadFile() {
-            var formData = new FormData(uploadForm);
+        function uploadFile(formData) {
             document.getElementById('message').textContent = 'Uploading.....';
 
-            fetch('/upload', {
+            fetch('/uploadfile', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('message').textContent = data.message || data.error || 'Unknown error occurred';
+                localStorage.setItem('message', data.message || data.error || 'Unknown error occurred')
+                location.reload();
+                
             })
             .catch(error => {
                 console.error('Error:', error.message);
                 document.getElementById('message').textContent = 'An error occurred while uploading the file';
             })
             .finally(() => {
-                fileInput.value = '';
-                selectedFileNameDisplay.textContent = '';
-                uploadForm.style.display = 'none';
-                uploadButton.style.display = 'none';
+                document.getElementById('fileInput').value = '';
             });
+        }
+        function deleteFile(filename) {
+            var confirmDelete = confirm('确认删除 ' + filename + ' ?');
+            if (!confirmDelete) {
+                return;
+            }
+
+            document.getElementById('message').textContent = 'Delete.....';
+            formData = new FormData()
+            formData.append('filename', filename)
+            fetch('/deletefile', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+            .then(data => {
+                document.getElementById('message').textContent = data.message || data.error || 'Unknown error occurred';
+                if (!data.error) {
+                    localStorage.setItem('message', data.message);
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error.message);
+                document.getElementById('message').textContent = 'An error occurred while delete the file';
+            })
         }
     </script>
 </body>
