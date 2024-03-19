@@ -138,21 +138,11 @@ def uploadfile():
     if len(files) == 0:
         return jsonify({'error': 'No file part'})
     
-    nownum, nowsize = fs.getUsage(username)
-    
-    num_limit = config['cloud']['num_limit'] or 10
-    capacity = config['cloud']['capacity'] or 1024 * 1024 * 1024
     for filename in files:
         file = files[filename]
-        nownum += 1
-        nowsize += len(file.read())
-        if nownum > num_limit:
-            return jsonify({'error': f'Saved files number over limit: {num_limit}'})
-        if nowsize > capacity:
-            return jsonify({'error': 'Saved files size over limit'})
-
-        if not fs.savefile(file, username):
-            return jsonify({'error': f'File: {filename} not allowed'})
+        res = fs.savefile(file, username)
+        if res:
+            return jsonify(res)
     return jsonify({'message': 'File successfully uploaded'})
 
 @app.route('/deletefile', methods=['POST'])

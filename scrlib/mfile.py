@@ -1,4 +1,5 @@
 from datetime import datetime
+
 import scrlib.mlib as lib
 import os
 
@@ -8,17 +9,32 @@ class MFile:
         self.savepath = os.path.join("static", 'cloudfolder' in config and config['cloudfolder'] or 'file') + os.path.sep
         lib.check_path(self.savepath)
     def savefile(self, file, username):
+        nownum, nowsize = self.getUsage(username)
+        num_limit = self.config['cloud']['num_limit'] or 10
+        capacity = self.config['cloud']['capacity'] or 1024 * 1024 * 1024
+
+        filecontent = file.read()
+        filesize = len(filecontent)
+        nowsize += filesize
+        if nownum + 1 > num_limit:
+            return {'error': f'Saved files number over limit: {num_limit}'}
+        if nowsize > capacity:
+            return {'error': 'Saved files size over limit'}
         # 检查文件类型是否允许
-        if file and self.allowed_file(file):
-            # 保存文件到服务器
+        if self.allowed_file(file):
             fullpath = os.path.join(self.savepath, username, file.filename)
             lib.check_path(fullpath)
-            file.save(fullpath)
-            return True
+            #保存filecontent
+            with open(fullpath, 'wb') as f:
+                f.write(filecontent)
+                return None
         else:
-            return False
+            return {'error': f'File: {file.filename} not allowed'}
     def allowed_file(self, file):
+        if file.filename == '':
+            return False
         return True
+        
     def deletefile(self, filename, username):
         fullpath = os.path.join(self.savepath, username, filename)
         if os.path.exists(fullpath):
