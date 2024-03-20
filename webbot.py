@@ -1,7 +1,7 @@
 #webbot.py
 import math
 from flask import Flask, render_template, redirect, url_for, request, jsonify, session, flash
-import os, re
+import os, re, time
 import json
 import msg_deal as msg
 from scrlib.mfile import MFile
@@ -138,11 +138,20 @@ def uploadfile():
     if len(files) == 0:
         return jsonify({'error': 'No file part'})
     
+    lib.log("Start save file...")
+    node1 = time.time()
+    i = 0
     for filename in files:
         file = files[filename]
+        i += 1
+        tmp = time.time()
         res = fs.savefile(file, username)
         if res:
             return jsonify(res)
+        cost = time.time() - tmp
+        lib.log(f'Save {filename} cost {round(cost, 2)}s')
+    cost = time.time() - node1
+    lib.log(f'Finish cost {round(cost, 2)}s')
     return jsonify({'message': 'File successfully uploaded'})
 
 @app.route('/deletefile', methods=['POST'])
