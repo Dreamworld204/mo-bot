@@ -103,23 +103,33 @@
         function uploadFile(formData) {
             document.getElementById('message').textContent = 'Uploading.....';
 
-            fetch('/uploadfile', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                localStorage.setItem('message', data.message || data.error || 'Unknown error occurred')
-                location.reload();
-                
-            })
-            .catch(error => {
-                console.error('Error:', error.message);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/uploadfile', true);
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable) {
+                    var progress = (e.loaded / e.total) * 100;
+                    document.getElementById('message').textContent = 'Uploading ' + progress.toFixed(2) + '%.....';
+                }
+            }
+
+            xhr.onload = function(){
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    // 上传成功处理
+                    var data = JSON.parse(xhr.responseText);
+                    localStorage.setItem('message', data.message || data.error || 'Unknown error occurred');
+                    location.reload();
+                } else {
+                    console.error('Error:', xhr.status);
+                    document.getElementById('message').textContent = 'An error occurred while uploading the file';
+                }
+            }
+
+            xhr.onerror = function() {
+                console.error('An error occurred during the upload');
                 document.getElementById('message').textContent = 'An error occurred while uploading the file';
-            })
-            .finally(() => {
-                document.getElementById('fileInput').value = '';
-            });
+            }
+
+            xhr.send(formData);
         }
         function deleteFile(filename) {
             var confirmDelete = confirm('确认删除 ' + filename + ' ?');
