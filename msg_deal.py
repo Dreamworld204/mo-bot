@@ -115,6 +115,10 @@ class Message:
             reply = ybtext.msg_stop[0]
         elif re.match('^今日头条', msg):
             reply = self.get_tophub()
+        elif re.match('倒置:', msg):
+            mt = re.match('倒置:(.*)', msg)
+            org = mt.group(1)
+            reply = self.inversion(org)
         elif re.match("\\S+是什么垃圾", msg):
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
@@ -1212,7 +1216,9 @@ class Message:
             if isinstance(e, socket.timeout):
                 print("socket timeout")
         return asw
+    def inversion(self, org:str) -> str:
+        return org[::-1]
+        
 if __name__ == '__main__':
     qm = Message({})
-    qm.get_tophub()
     
