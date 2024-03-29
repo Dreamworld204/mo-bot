@@ -103,7 +103,8 @@ def process_input():
 
     if userid not in user_history:
         user_history[userid] = []
-    user_history[userid].append('<div class="message user-message">' + user_input.replace('\n', '<br>') + '</div>')
+    if user_action:
+        user_history[userid].append('<div class="message user-message">' + user_input.replace('\n', '<br>') + '</div>')
     user_history[userid].append('<div class="message bot-message">' + bot_reply.replace('\n', '<br>') + '</div>')
     if len(user_history) > 110:
         user_history[userid] = user_history[userid][80:]
