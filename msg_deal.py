@@ -115,6 +115,8 @@ class Message:
             reply = ybtext.msg_stop[0]
         elif re.match('^今日头条', msg):
             reply = self.get_tophub()
+        elif re.match('^藏[头尾中增减]诗[:：]\\S+', msg):
+            reply = self.versify(msg)
         elif re.match('倒置:', msg):
             mt = re.match('倒置:(.*)', msg)
             org = mt.group(1)
@@ -1198,6 +1200,41 @@ class Message:
         except Exception as e:
             traceback.print_exc()
             return ybtext.msg_history[1]
+        
+    def versify(self, org) -> str:
+        asw = ""
+        org = org.strip()
+        myurl = "http://api.tianapi.com/txapi/cangtoushi/index"
+        key = "66faeca0e430e6febbe4790551188a10"
+        ma = re.match("藏([头尾中增减])诗[:：](\\S+)", org)
+        modedict = {"头": 1, "尾": 2, "中": 3, "增": 4, "减": 5}
+        versify_type = 1
+        if ma:
+            versify_type = modedict[ma.group(1)]
+        else:
+            return ybtext.msg_notfind[2]
+        words = ma.group(2)
+        myurl = myurl + "?key=" + key + "&len=1" + "&word=" + \
+            urllib.parse.quote(words, 'uft-8') + "&type=" + str(versify_type)
+        try:
+            f = urllib.request.urlopen(myurl, timeout=8)
+
+            result_all = f.read()
+            result = json.loads(result_all)
+            if result['code'] != 200:
+                return ybtext.msg_fail[2]
+            for list in result['newslist']:
+                if asw == "":
+                    asw = asw + list['list']
+                else:
+                    asw = asw + "\n" + list['list']
+        except Exception as e:
+            traceback.print_exc()
+            print("myurl:", myurl)
+            if isinstance(e, socket.timeout):
+                asw = self.random_str(ybtext.msg_timeout)
+        return asw
+    
     def image_map(self, key: str, value: str):
         key = key.strip()
         value = value.strip().lower()
