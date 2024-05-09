@@ -123,6 +123,13 @@ class Message:
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
             reply = self.garbage_classify(org)
+        elif re.match(r"^历史上的((今天)|(\d{4}))", msg):
+            mt = re.match(r"历史上的(\d{4})", msg)
+            if mt:
+                org = mt.group(1)
+                reply = self.InHis(org)
+            else:
+                reply = self.TodayInHis()
         elif re.match('^执行[:：](.*)', msg):
             mt = re.match('执行[:：](.*)', msg)
             org = mt.group(1)
@@ -1151,8 +1158,46 @@ class Message:
             self.chat_ai_time[target] = 0
         else:
             self.chat_ai_time[target] = time.time()
-
         return asw
+    
+    def TodayInHis(self):
+        today = time.strftime('%m%d')
+        return self.InHis(today)
+    
+    def InHis(self, mmdd:str):
+        month = mmdd.strip()[:2]
+        addr = f'https://baike.baidu.com/cms/home/eventsOnHistory/{month}.json'
+        #print(addr)
+        user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
+        try:
+            f = requests.get(addr, headers=user, timeout=60)
+            if f.status_code == 200: 
+                res = json.loads(f.text)
+                lst_event = res[month][mmdd]
+                set_fes = set()
+                lst_his = []
+                for event in lst_event:
+                    year = event['year']
+                    festival = event['festival']
+                    title = event['title']
+                    title = re.sub("</?a.*?>", "", title)
+                    t = event['type']
+                    if t not in {'birth', 'death'}:
+                        lst_his.append(f'{year}: {title}')
+                    if festival and festival != "":
+                        set_fes.add(festival)
+                lst_his.reverse()
+                rep = ""
+                if len(set_fes)>0:
+                    rep = ybtext.msg_history[0].format(",".join(set_fes))
+                rep += "\n".join(lst_his)
+                return rep
+            else:
+                return ybtext.msg_history[1]
+        except Exception as e:
+            traceback.print_exc()
+            return ybtext.msg_history[1]
     def image_map(self, key: str, value: str):
         key = key.strip()
         value = value.strip().lower()
