@@ -5,11 +5,16 @@
 	"pic":{
 		"show_num": 20
 	},
+	"cloud":{
+		"num_limit": 20,
+		"capacity": 5000000000
+	},
 	"chatgpt":{
 		"enable": false,
 		"apikey": ""
 	},
 	"tianapi_key": "",
 	"baidufanyi_appid": "",
-	"baidufanyi_key": ""
+	"baidufanyi_key": "",
+	"tophup_limit": 20
 }
