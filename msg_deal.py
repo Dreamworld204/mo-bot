@@ -17,6 +17,7 @@ import requests
 import scrlib.mlib as lib
 from scrlib.imagedb import ImgDB
 import scrlib.ybtext as ybtext
+import scrlib.zhouyi as yi
 
 class Message:
     date_jieqi = {}
