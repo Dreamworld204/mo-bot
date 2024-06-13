@@ -122,6 +122,10 @@ class Message:
             mt = re.match('倒置:(.*)', msg)
             org = mt.group(1)
             reply = self.inversion(org)
+        elif re.match('占卜[:：]?(.*)', msg):
+            mt = re.match('占卜[:：]?(.*)', msg)
+            org = mt.group(1)
+            reply= self.liuyao(org)
         elif re.match("\\S+是什么垃圾", msg):
             mt = re.match('(\\S+)是什么垃圾', msg)
             org = mt.group(1)
@@ -454,6 +458,16 @@ class Message:
             return ybtext.msg_notfind[2]
         else:
             return asw
+    def liuyao(self, org) :
+        org = org.strip()
+        if org != '':
+            sTime = time.strftime("%Y-%m-%d %H")
+            seed = f'{sTime}:{org}'
+        else:
+            seed = time.strftime("%Y-%m-%d %H:%M:%S")
+        asw = yi.yigua(seed)
+        return asw
+        
         
     def random_str(self, str_list: list) -> str:
         n = 0

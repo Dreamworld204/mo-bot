@@ -17,20 +17,20 @@ map_yaobian = {0:"无变爻, 以本卦卦辞为根据",
 map_bagua = {0:'☷', 1:'☳', 2:'☵', 3:'☱', 4:'☶', 5:'☲', 6:'☴', 7:'☰'}
 
 
-map_xiang = {63: '乾', 61: '同人', 60: '遁',
-             59: '履', 58: '讼', 57: '无妄', 56: '否', 55: '小畜', 53: '家人',
-             48: '观', 47: '大有', 45: '离', 43: '睽', 41: '噬嗑', 40: '晋',
-             39: '大畜', 38: '蛊', 37: '賁', 34: '蒙', 33: '颐', 32: '剥', 30: '大过',
-             28: '咸', 25: '随', 23: '需', 20: '蹇', 
-             18: '坎', 17: '屯', 16: '比', 15: '大壮', 14: '恒', 10: '解',
-             8: '豫', 7: '泰', 5: '明夷', 4: '谦', 3: '临', 2: '师', 1: '复', 0: '坤'}
-map_menu = {63: 1, 61: 13, 60: 33, 
-            59: 10, 58: 6, 57: 25, 56: 12, 55: 9, 53: 36,
-            48: 20, 47: 14, 45: 30, 43: 38, 41: 21, 40: 35,
-            39: 26, 38: 18, 37: 22, 34: 4, 33: 27, 32: 23, 30: 28,
-            28: 31, 25: 17, 23: 5, 20: 39, 
-            18: 29, 17: 3, 16: 8, 15: 34, 14: 32, 10: 40,
-            8: 16, 7: 11, 5: 36, 4: 15, 3: 19, 2: 7, 1: 24, 0: 2}
+map_xiang = {63: '乾', 62: '姤', 61: '同人', 60: '遁',
+             59: '履', 58: '讼', 57: '无妄', 56: '否', 55: '小畜', 54: '巽', 53: '家人', 52: '渐', 51: '中孚', 50: '涣',
+             49: '益', 48: '观', 47: '大有', 46: '鼎', 45: '离', 44: '旅', 43: '睽', 42: '未济', 41: '噬嗑', 40: '晋',
+             39: '大畜', 38: '蛊', 37: '賁', 36: '艮', 35: '损', 34: '蒙', 33: '颐', 32: '剥', 31: '夬', 30: '大过',
+             29: '革', 28: '咸', 27: '兑', 26: '困', 25: '随', 24: '萃', 23: '需', 22: '井', 21: '既济', 20: '蹇',
+             19: '节', 18: '坎', 17: '屯', 16: '比', 15: '大壮', 14: '恒', 13: '丰', 12: '小过', 11: '归妹', 10: '解',
+             9: '震', 8: '豫', 7: '泰', 6: '升', 5: '明夷', 4: '谦', 3: '临', 2: '师', 1: '复', 0: '坤'}
+map_menu = {63: 1, 62: 44, 61: 13, 60: 33,
+            59: 10, 58: 6, 57: 25, 56: 12, 55: 9, 54: 57, 53: 36, 52: 53, 51: 61, 50: 59,
+            49: 42, 48: 20, 47: 14, 46: 50, 45: 30, 44: 56, 43: 38, 42: 64, 41: 21, 40: 35,
+            39: 26, 38: 18, 37: 22, 36: 52, 35: 41, 34: 4, 33: 27, 32: 23, 31: 43, 30: 28,
+            29: 49, 28: 31, 27: 58, 26: 47, 25: 17, 24: 45, 23: 5, 22: 48, 21: 63, 20: 39,
+            19: 60, 18: 29, 17: 3, 16: 8, 15: 34, 14: 32, 13: 55, 12: 62, 11: 54, 10: 40,
+            9: 51, 8: 16, 7: 11, 6: 46, 5: 36, 4: 15, 3: 19, 2: 7, 1: 24, 0: 2}
 
 def yibian(shicao: int) -> int:
     # 1
@@ -69,7 +69,10 @@ def yiyao() -> int:
     res = int(shicao / 4)
     return res
 
-def yigua() -> int:
+def yigua(seed = '') -> int:
+    
+    random.seed(seed)
+
     yao_num = []
     bengua = {}
     biangua = {}
@@ -100,16 +103,18 @@ def yigua() -> int:
     bian_xia_i = biangua[0] + biangua[1] * 2 + biangua[2] * 4
     bian_shang_i = biangua[3] + biangua[4] * 2 + biangua[5] * 4
     bian_xiang = bian_xia_i + bian_shang_i * 8
-    mlib.log(f'本卦: {map_bagua[shang_i]} {map_bagua[xia_i]}, {map_xiang.get(xiang, " ")}卦第{map_menu.get(xiang, 0)}')
-    mlib.log(f'变卦: {map_bagua[bian_shang_i]} {map_bagua[bian_xia_i]}, {map_xiang.get(bian_xiang, " ")}卦第{map_menu.get(bian_xiang, 0)}')
+    sRes = ''
+    sRes += f'本卦: {map_bagua[shang_i]} {map_bagua[xia_i]} , {map_xiang.get(xiang, " ")}卦第{map_menu.get(xiang, 0)}\n'
+    sRes += f'变卦: {map_bagua[bian_shang_i]} {map_bagua[bian_xia_i]} , {map_xiang.get(bian_xiang, " ")}卦第{map_menu.get(bian_xiang, 0)}\n'
 
     num_bian = len(bian_set)
-    mlib.log(f'{num_bian}爻变化: {bian_set}')
+    sRes += f'{num_bian}爻变化: {bian_set}\n'
     if num_bian <= 3:
-        mlib.log(map_yaobian[num_bian].format(bian_set))
+        sRes += map_yaobian[num_bian].format(bian_set) + '\n'
     else:
         yu_set = {1, 2, 3, 4, 5, 6} - bian_set
-        mlib.log(map_yaobian[num_bian].format(yu_set))
+        sRes += map_yaobian[num_bian].format(yu_set) + '\n'
+    return sRes
     
 
     
@@ -127,10 +132,5 @@ def testyao():
 
 if __name__ == "__main__":
     random.seed(str(time.time()))
-    yigua()
-
-
-
-
-
+    print(yigua())
 
