@@ -19,6 +19,7 @@
         }
 
         #chat-container {
+            position: relative;
             width: 60vw;
             margin: auto;
             margin-right: 50;
@@ -34,6 +35,27 @@
             /* 垂直布局 */
         }
 
+        #overlap-button {
+            position: fixed; /* Fixed position */
+            bottom: 25%; /* 30% from the bottom of the viewport */
+            right: 8%; /* Center horizontally */
+            transform: translateX(-50%); /* Center horizontally */
+            z-index: 100; /* Ensures the button is on top */
+            background-color: transparent; /* Transparent background */
+            border: none; /* Remove default border */
+            cursor: pointer; /* Pointer cursor on hover */
+            padding: 0; /* Remove padding */
+        }
+
+        #overlap-button img {
+            width: 7vw; /* Adjust icon size to 5% of viewport width */
+            height: auto; /* Maintain aspect ratio */
+            transition: width 0.2s ease-out; /* Smooth transition for width change */
+        }
+
+        #overlap-button:hover img {
+            width: 8vw; /* Increase width on hover */
+        }
         #chat-toolbox {
             width: 60vw;
             margin: auto;
@@ -136,6 +158,9 @@
             </div>
         </div>
     </div>
+    <button id="overlap-button" onclick="scrollToBottom()">
+        <img src="{{ url_for('static', filename='ico/fuxuan.png') }}" alt="Icon"> <!-- Custom icon -->
+    </button>
 
     <script>
         var userInput = document.getElementById('user-input');
@@ -179,6 +204,18 @@
             var chatContainer = document.getElementById('chat-container');
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+
+        var chatContainer = document.getElementById('chat-container');
+        var scrollButton = document.getElementById('overlap-button');
+        scrollButton.style.display = 'none';
+        function checkScrollPosition() {
+            if (chatContainer.scrollTop + chatContainer.clientHeight < chatContainer.scrollHeight) {
+                scrollButton.style.display = 'block'; // 显示滚动按钮
+            } else {
+                scrollButton.style.display = 'none'; // 隐藏滚动按钮
+            }
+        }
+        chatContainer.addEventListener('scroll', checkScrollPosition);
 
         function logout() {
             document.cookie = "user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
