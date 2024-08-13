@@ -1296,15 +1296,17 @@ class Message:
         asw = ybtext.msg_notfind[2]
         try:
             res = requests.request('GET', url, headers=head)
-            htmltext = res.text
+            htmltext = res.text 
             
             # with open('temphtml.txt', 'wb') as ff:
             #     ff.write(res.content)
-            matchs = re.findall('\{"card_title":.*?\}', htmltext)
-            
+            # print(htmltext)
+            matchs = re.findall('"card_title":.*?\}', htmltext, re.DOTALL)
             if len(matchs) > 0:
                 asw = ""
                 for strTop in matchs:
+                    strTop = '{' + strTop
+                    # print(strTop)
                     jTop = json.loads(strTop)
                     if (int(jTop["index"]) <= limit):
                         asw += f'{jTop["index"]}.<a href={urllib.parse.unquote(jTop["linkurl"])} target="_blank">{jTop["card_title"]}</a>' + '\n'
