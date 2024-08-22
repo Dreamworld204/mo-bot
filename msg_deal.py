@@ -605,12 +605,13 @@ class Message:
                    "el", "nl", "pl", "bul", "est", "dan", "fin", "cs", "rom", "slo", "swe", "hu"]
         que = org
         lanFrom = "auto"
+        asw = ""
         for lan in lan_lst:
             que = self.transapi(que, lan, lanFrom)
-            #untrans = self.transapi(que, 'zh', lan)
-            #print(f'{ybtext.lang.get(lan)}:{que} | 汉语:{untrans}')
+            untrans = self.transapi(que, 'zh', lan)
+            asw += f'{ybtext.lang.get(lan)}:{que} | 汉语:{untrans}' + '\n'
             lanFrom = lan
-        asw = self.transapi(que, 'zh', lanFrom)
+        asw += self.transapi(que, 'zh', lanFrom)
         return asw
 
     def translate_assign(self, org, lan, msg) -> str:
@@ -1320,4 +1321,3 @@ class Message:
         
 if __name__ == '__main__':
     qm = Message({})
-    
