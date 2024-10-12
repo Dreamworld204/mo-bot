@@ -690,7 +690,7 @@ class Message:
                 tips += ('\n' + ybtext.msg_skip[0].format(sLink))
                 asw = tips 
             else:
-                asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" alt="{tmp_msg["data"]["file"]}">'
+                asw = tips + '\n' + f'<img src="{tmp_msg["data"]["url"]}" class="needload" alt="{tmp_msg["data"]["file"]}" onload="imageLoaded(\'{tmp_msg["data"]["file"]}\')">'
         else:
             asw = tmp_msg
         return asw

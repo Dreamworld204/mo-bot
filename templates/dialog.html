@@ -169,6 +169,7 @@
         <img src="{{ url_for('static', filename='material/fuxuan.png') }}" alt="Icon"> <!-- Custom icon -->
     </button>
 
+    <script src = "{{ url_for('static', filename='lib/jquery/jquery-3.7.1.min.js') }}"></script>
     <script src = "{{ url_for('static', filename='lib/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src = "{{ url_for('static', filename='lib/bootstrap/js/bootstrap.min.js') }}"></script>
     <script>
@@ -176,6 +177,9 @@
         var chatOutput = document.getElementById('chat-output');
         var inputList = [];
         var nowIndex = 0;
+        var imgloaded = 0;
+        var imgtotal = document.querySelectorAll('img.needload').length;
+
         function recordNewInput(input){
             var bFind = false;
             input = input.trim()
@@ -268,6 +272,8 @@
     
                         waitingMessage.style.display = 'none';
                         document.getElementById('user-input').focus();
+                        imgloaded = 0;
+                        imgtotal = document.querySelectorAll('img.needload').length;
     
                         if(data.nextorder){
                             sendNext(data.nextorder, false)
@@ -302,6 +308,14 @@
         }
         function onButtonNextInput(){
             userInput.value = getNextInput();
+        }
+
+        function imageLoaded (name) {
+            imgloaded++;
+            // console.log('图片加载成功', name, imgloaded, imgtotal);
+            if(imgloaded == imgtotal){
+                scrollToBottom()
+            }
         }
 
         // 在输入框内容变化时调整高度
