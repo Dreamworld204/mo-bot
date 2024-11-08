@@ -104,8 +104,9 @@ def yigua(seed = '') -> int:
     bian_shang_i = biangua[3] + biangua[4] * 2 + biangua[5] * 4
     bian_xiang = bian_xia_i + bian_shang_i * 8
     sRes = ''
-    sRes += f'本卦: {map_bagua[shang_i]} {map_bagua[xia_i]} , {map_xiang.get(xiang, " ")}卦第{map_menu.get(xiang, 0)}\n'
-    sRes += f'变卦: {map_bagua[bian_shang_i]} {map_bagua[bian_xia_i]} , {map_xiang.get(bian_xiang, " ")}卦第{map_menu.get(bian_xiang, 0)}\n'
+    
+    sRes += f'本卦: {map_bagua[shang_i]} {map_bagua[xia_i]} , <a href="https://www.baidu.com/s?wd={map_xiang.get(xiang, " ")}卦" target="_blank">{map_xiang.get(xiang, " ")}卦</a>第{map_menu.get(xiang, 0)}\n'
+    sRes += f'变卦: {map_bagua[bian_shang_i]} {map_bagua[bian_xia_i]} , <a href="https://www.baidu.com/s?wd={map_xiang.get(bian_xiang, " ")}卦" target="_blank">{map_xiang.get(bian_xiang, " ")}卦</a>第{map_menu.get(bian_xiang, 0)}\n'
 
     num_bian = len(bian_set)
     sRes += f'{num_bian}爻变化: {bian_set}\n'
