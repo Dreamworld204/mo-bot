@@ -1308,13 +1308,20 @@ class Message:
                 for strTop in matchs:
                     strTop = '{' + strTop
                     # print(strTop)
-                    jTop = json.loads(strTop)
-                    if (int(jTop["index"]) <= limit):
-                        asw += f'{jTop["index"]}.<a href={urllib.parse.unquote(jTop["linkurl"])} target="_blank">{jTop["card_title"]}</a>' + '\n'
+                    try:
+                        jTop = json.loads(strTop)
+                        if (int(jTop["index"]) <= limit):
+                            asw += f'{jTop["index"]}.<a href={urllib.parse.unquote(jTop["linkurl"])} target="_blank">{jTop["card_title"]}</a>' + '\n'
+                    except Exception as e:
+                        if isinstance(e, json.decoder.JSONDecodeError):
+                            next
+                        else:
+                            print(type(e), e)
         except Exception as e:
-            print(e)
             if isinstance(e, socket.timeout):
                 print("socket timeout")
+            else:
+                print(type(e), e)
         return asw
     def inversion(self, org:str) -> str:
         return org[::-1]
