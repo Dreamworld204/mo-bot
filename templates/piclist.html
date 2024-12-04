@@ -31,6 +31,17 @@
         #pagination-container a {
             margin: 0 20px;
         }
+
+        #change-button {
+            font-size: 24px;  /* 修改按钮字体大小 */
+            padding: 12px 30px;  /* 修改按钮的内边距 */
+            border-radius: 5px;  /* 设置按钮圆角 */
+            background-color: #f8f9fa;  /* 按钮背景色 */
+            border: 1px solid #ddd;  /* 按钮边框 */
+        }
+        #change-button:hover {
+            background-color: #e2e6ea;  /* 按钮悬停效果 */
+        }
         
         .image-wrapper {
             position: relative;
@@ -62,7 +73,7 @@
 
 <body>
     <div>
-        <button id="logout-button" type="button" class="btn btn-outline-secondary btn-sm" onclick="changemode()">
+        <button id="change-button" type="button" class="btn btn-outline-secondary" onclick="changemode()">
             {% if mode == 1 %}全部{% else %}收藏夹{% endif %}
         </button>
     </div>
