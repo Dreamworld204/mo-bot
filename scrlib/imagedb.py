@@ -22,10 +22,18 @@ class ImgDB:
                 db.execute(
                     '''CREATE TABLE if not EXISTS userfavor(
                     user INT,
-                    tag TEXT,
-                    times INT
+                    favor TEXT
                     )''')
-            
+            db.execute(
+                '''DROP TABLE userfavor
+                ''')
+            db.execute(
+                '''CREATE TABLE if not EXISTS userfavor(
+                user INT,
+                favor TEXT
+                )''')
+            print("okk")
+        
             db_conn.commit()
     def execute(self, sql, params):
         with sqlite3.connect(os.path.join("data", "image.db")) as db_conn:
