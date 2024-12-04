@@ -29,21 +29,62 @@
         #pagination-container a {
             margin: 0 5px;
         }
+        
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 10px;
+        }
+
+        .star {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            font-size: 24px;
+            cursor: pointer;
+            color: black;
+            text-shadow: 
+                -1px -1px 2px white, /* 上左 */
+                1px -1px 2px white,  /* 上右 */
+                -1px 1px 2px white,  /* 下左 */
+                1px 1px 2px white;   /* 下右 */
+            transition: color 0.3s;
+            z-index: 1;
+        }
+        
+        .star.favorited {
+            color: gold;
+        }
     </style>
 </head>
 
 <body>
+    <div>
+        <button id="logout-button" type="button" class="btn btn-outline-secondary btn-sm" onclick="changemode()">
+            {% if mode == 1 %}全部{% else %}收藏夹{% endif %}
+        </button>
+    </div>
     <div id="pic-container">
-        {% for i in all_pic %}
-        <a href="./static/pic/{{i}}" target="_blank">
-            <img src="./static/pic/preview/{{i}}" alt="{{i}}">
-        </a>
+        {% for id, favor in all_pic %}
+            <div class="image-wrapper">
+                <a href="./static/pic/{{ id }}" target="_blank">
+                    <img src="./static/pic/preview/{{ id }}" alt="{{ id }}">
+                </a>
+                
+                <span class="star {% if favor == '1' %}favorited{% endif %}" data-id="{{ id }}" onclick="toggleFavorite(this)">
+                    {% if favor == '1' %}
+                        ★ <!-- favor 为 1 时显示实心星星 -->
+                    {% else %}
+                        ☆ <!-- favor 为 0 时显示空心星星 -->
+                    {% endif %}
+                </span>
+            </div>
         {% endfor %}
     </div>
 
     <div id="pagination-container">
         {% if now_page != 1 %}
-            <a href="./pic?page=1">1</a>
+            <a href="./pic?page=1&mode={{ mode }}">1</a>
         {% endif %}
 
         {% if now_page - 4 > 2 %}
@@ -52,7 +93,7 @@
 
         {% for page in range(2, now_page) %}
             {% if page >= now_page - 4 %}
-                <a href="./pic?page={{ page }}">{{ page }}</a>
+                <a href="./pic?page={{ page }}&mode={{ mode }}">{{ page }}</a>
             {% endif %}
         {% endfor %}
 
@@ -60,7 +101,7 @@
 
         {% for page in range(now_page + 1, total_page) %}
             {% if page <= now_page + 4 %}
-                <a href="./pic?page={{ page }}">{{ page }}</a>
+                <a href="./pic?page={{ page }}&mode={{ mode }}">{{ page }}</a>
             {% endif %}
         {% endfor %}
 
@@ -68,25 +109,64 @@
             ...
         {% endif %}
 
-        {% if now_page != total_page and total_page != 1 %}
-            <a href="./pic?page={{ total_page }}">{{total_page}}</a>
+        {% if now_page != total_page and total_page > 1 %}
+            <a href="./pic?page={{ total_page }}&mode={{ mode }}">{{total_page}}</a>
         {% endif %}
     </div>
 
     <script>
         now_page = {{now_page}}
         total_page = {{total_page}}
+        mode = {{mode}}
 
         document.addEventListener('keydown', function (event) {
             // 左箭头键
             if (event.keyCode === 37 && now_page > 1) {
-                window.location.href = "./pic?page=" + (now_page - 1);
+                window.location.href = "./pic?page=" + (now_page - 1) + "&mode=" + mode;
             }
             // 右箭头键
             else if (event.keyCode === 39 && now_page < total_page) {
-                window.location.href = "./pic?page=" + (now_page + 1);
+                window.location.href = "./pic?page=" + (now_page + 1) + "&mode=" + mode;
             }
         });
+
+        function toggleFavorite(element) {
+            const id = element.getAttribute('data-id');
+            const isFavorited = element.classList.contains('favorited');
+            
+            // Toggle the visual state
+            if (isFavorited) {
+                element.classList.remove('favorited');
+                element.textContent = '☆'; // Empty star
+            } else {
+                element.classList.add('favorited');
+                element.textContent = '★'; // Solid star
+            }
+        
+            const formData = new URLSearchParams();
+            formData.append('id', id);
+            formData.append('favorite', !isFavorited);
+
+            // Send the favorite status to the server
+            fetch('/set-favorite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData.toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data.favorite)
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function changemode() {
+            window.location.href = "./pic?mode=" + (1 - mode)
+        }
     </script>
 </body>
 

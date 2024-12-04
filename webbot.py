@@ -7,6 +7,8 @@ import msg_deal as msg
 from scrlib.mfile import MFile
 import scrlib.mlib as lib
 from scrlib.userdb import UserDB
+from scrlib.imagedb import ImgDB
+
 
 app = Flask(__name__)
 app.secret_key = 'a6ae45f512419d4a35a725d4d04c9c8a'
@@ -71,6 +73,8 @@ def getpic():
     
     show_num = config['pic']['show_num'] or 10 # 一页显示的数量
     page = int(request.args.get('page', 1))
+    iMode = int(request.args.get('mode', 0))
+
     pic_path = 'static/pic/'
     preview_path = 'static/pic/preview/'
     filelist = os.listdir(preview_path)
@@ -80,15 +84,44 @@ def getpic():
     i = 0   
     index_start = 0 + (page-1) * show_num #开始,包含
     index_end = index_start + show_num #结束,不包含
+
+    imgdb = ImgDB()
+    favorlist = imgdb.getFavorList(username)
+    
     for f in filelist:
         abspath = os.path.join(pic_path, f)
-        if not os.path.isdir(abspath):
-            if i >= index_start and i < index_end:
-                piclist.append(f)
-            i += 1
+        if not os.path.isdir(abspath): 
+            if f in favorlist:
+                favor = '1'
+            else :
+                favor = '0'
+            if iMode == 0 or favor == '1':
+                if i >= index_start and i < index_end:
+                    piclist.append((f, favor))
+                i += 1
     total_page = math.ceil(i / show_num)
     
-    return render_template('piclist.html', all_pic = piclist, total_page = total_page, now_page = page)
+    return render_template('piclist.html', all_pic = piclist, total_page = total_page, now_page = page, mode = iMode)
+
+@app.route('/set-favorite', methods=['POST'])
+def setFavorImg():
+    username = request.cookies.get('user')
+    if not username:
+        return redirect(url_for('login'))
+    
+    imgid = request.form['id']
+    favorite = request.form['favorite']
+
+    # print(f'SetFavorImg {imgid}  {favorite} {type(favorite)}')
+    
+    imgdb = ImgDB()
+    if (favorite == 'true'):
+        imgdb.addFavor(username, imgid)
+    else:
+        imgdb.delFavor(username, imgid)
+    imgdb.getFavorList(username)
+
+    return jsonify({'favorite': favorite})
 
 @app.route('/process_input', methods=['POST'])
 def process_input():

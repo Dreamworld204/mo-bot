@@ -43,4 +43,19 @@ class ImgDB:
     def insert(self, filename, msg_type, sender, dt):
         self.execute("INSERT INTO sendlog (filename,type,send,dt) VALUES(?,?,?,?)",
                    (filename, msg_type, sender, dt, ))
-
+        
+    def addFavor(self, user, filename):
+        self.execute(
+            "INSERT INTO userfavor (user, favor) VALUES (?, ?)", (user, filename,))
+    def delFavor(self, user, filename):
+        self.execute(
+            "DELETE FROM userfavor WHERE user=? AND favor=?", (user, filename,))
+        
+    def getFavorList(self, user):
+        reslst = list(self.execute(
+            "SELECT favor FROM userfavor WHERE user=? GROUP BY favor", (user,)
+        ))
+        tmplist = []
+        for entry in reslst:
+            tmplist.append(entry[0])
+        return tmplist
