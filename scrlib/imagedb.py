@@ -24,15 +24,6 @@ class ImgDB:
                     user INT,
                     favor TEXT
                     )''')
-            db.execute(
-                '''DROP TABLE userfavor
-                ''')
-            db.execute(
-                '''CREATE TABLE if not EXISTS userfavor(
-                user INT,
-                favor TEXT
-                )''')
-            print("okk")
         
             db_conn.commit()
     def execute(self, sql, params):
