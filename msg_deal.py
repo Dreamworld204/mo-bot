@@ -111,6 +111,8 @@ class Message:
             if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
                 nextorder = f'{key}热图*{remain - 1}'
+        elif re.match('^收藏', msg):
+            reply = self.setImgFavor(sid, msg)
         elif re.match('^停+$', msg):
             self.stopimg = True
             reply = ybtext.msg_stop[0]
@@ -644,7 +646,27 @@ class Message:
         for i in pypinyin.pinyin(word, style=pypinyin.NORMAL):
             s += ''.join(i)
         return s
-    
+    def setImgFavor(self, sid, msg):
+        sender = str(sid)
+        print(sender)
+        filename = ""
+        ma = re.match('^收藏(\S+)', msg)
+        if ma:
+            filename = ma.group(1)
+        elif sender in self.lastimgfile:
+            filename = self.lastimgfile[sender]
+        else:
+            return ybtext.msg_setfavor[0]
+        
+        preview_path = 'static/pic/preview/'
+        filelist = os.listdir(preview_path)
+        if filename in filelist:
+            self.imgdb.addFavor(sid, filename)
+            return ybtext.msg_setfavor[1].format(filename)
+        else:
+            return ybtext.msg_notexists[4]
+
+        
     def send_img(self, searchtype, id, message):
         def write_dblog(filename, id):
             dt = time.strftime("%Y-%m-%d")
@@ -694,7 +716,7 @@ class Message:
         else:
             asw = tmp_msg
         return asw
-
+    
     def image_api(self, mode: str, org=''):
         def randomlist(orglst) -> list:
             lst = []
