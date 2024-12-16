@@ -111,6 +111,24 @@ class Message:
             if remain > 1 and not self.stopimg:
                 reply += f"\n剩余{remain - 1}张"
                 nextorder = f'{key}热图*{remain - 1}'
+        elif re.search('宽高比\\d+([\\./]\\d+)?图', msg):
+            strRatio = re.search('宽高比(.*)图', msg).group(1)
+            ratio = float(eval(strRatio))
+            mt = re.search('(\\S*)宽高比.*图\\*(\\d+)', msg)
+            key = ""
+            remain = 1
+            if mt:
+                key = mt.group(1)
+                remain = min(int(mt.group(2)), 10)
+            reply = ""
+            if bUser:
+                self.stopimg = False
+            lib.log(f'等待发送宽高比{strRatio}图: {remain}')
+            
+            reply += self.send_img(2, sid, msg, ratio)
+            if remain > 1 and not self.stopimg:
+                reply += f"\n剩余{remain - 1}张"
+                nextorder = f'{key}宽高比{strRatio}图*{remain - 1}'
         elif re.match('^收藏', msg):
             reply = self.setImgFavor(sid, msg)
         elif re.match('^停+$', msg):
@@ -666,8 +684,7 @@ class Message:
         else:
             return ybtext.msg_notexists[4]
 
-        
-    def send_img(self, searchtype, id, message):
+    def send_img(self, searchtype, id, message, ratio=0):
         def write_dblog(filename, id):
             dt = time.strftime("%Y-%m-%d")
             #print("dt:", dt)
@@ -683,7 +700,7 @@ class Message:
         tmp_msg = {}
         ban = False
         mode = searchtype == 2 and 'yande_hot' or 'yande'
-        tmp_msg, ban = self.image_api(mode, message)
+        tmp_msg, ban = self.image_api(mode, message, ratio)
 
         if type(tmp_msg) is dict and 'data' in tmp_msg:
             write_dblog(tmp_msg['data']['file'], id)
@@ -717,7 +734,7 @@ class Message:
             asw = tmp_msg
         return asw
     
-    def image_api(self, mode: str, org=''):
+    def image_api(self, mode: str, org='', ratio=0):
         def randomlist(orglst) -> list:
             lst = []
             start = 0
@@ -814,7 +831,7 @@ class Message:
                     lib.log("Get " + myurl + " Fail status:" +
                           str(response_tag.status_code))
                 return tags
-            ma = re.search('^(\\S+?)[新热]图', org)
+            ma = re.search('^(\\S+?)([新热]|(宽高比.+))图', org)
             if ma:
                 tars = ma.group(1).split(',')
                 tags = []
@@ -854,7 +871,7 @@ class Message:
         ban_list = {'ass', 'breasts', 'nopan', 'naked', }  # 'no_bra'
         relate = '图'
         org = org.replace(' ', '')
-        ma = re.search('^(\\S+?)[新热]图', org)
+        ma = re.search('^(\\S+?)([新热]|(宽高比.+))图', org)
         if ma:
             relate = ma.group(1)
 
@@ -1004,8 +1021,14 @@ class Message:
                                 #doorsill = (-(delay-24)*(delay-24) + 576)/20 if delay<=24 else 30
                                 doorsill = math.floor(
                                     20 * (1 - math.exp(-(delay+3)/8)) if delay < 24 else 20)
-
-                                if ifskip and score < doorsill * 3 or ban and score < doorsill * 1.5 or score < doorsill:
+                       
+                                if ratio > 0:
+                                    width = int(res['width'])
+                                    height = int(res['height'])
+                                    wh = width/height
+                                    if wh <= ratio - 0.3 or wh >= ratio + 0.3:
+                                        continue
+                                elif ifskip and score < doorsill * 3 or ban and score < doorsill * 1.5 or score < doorsill:
                                     continue
 
                                 # 分解url
