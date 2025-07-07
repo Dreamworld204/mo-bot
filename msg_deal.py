@@ -162,7 +162,8 @@ class Message:
             org = mt.group(1)
             reply = self.cast_as_eval(org)
         elif self.config['chatgpt']['enable'] and not re.match("^\\s*$", msg):
-            reply = self.chat_gpt(msg, id, 2)
+            # reply = self.chat_gpt(msg, id, 2)
+            reply = self.deepseek_chat(msg, id)
 
         return reply, nextorder
 
@@ -1212,6 +1213,64 @@ class Message:
                 asw = gpt_msg.strip()
                 if re.search(ybtext.gpt_keyword[0], org):
                     self.chat_lst[target] = []
+        except Exception as e:
+            lib.log(e)
+            self.chat_lst[target].pop()
+            if isinstance(e, socket.timeout):
+                asw = self.random_str(ybtext.msg_timeout)
+        if re.search(ybtext.gpt_keyword[1], org):
+            self.chat_ai_time[target] = 0
+        else:
+            self.chat_ai_time[target] = time.time()
+        return asw
+    
+    def deepseek_chat(self, org, id) -> str:
+        target = id
+        if target not in self.chat_ai_time:
+            self.chat_ai_time[target] = 0
+        if target not in self.chat_lst:
+            self.chat_lst[target] = []
+        dialogue_life = 600
+        usr_name = 'user'
+        asw = self.random_str(ybtext.gpt_connect_error)
+        org = org.strip()
+
+        date = time.strftime("%Y-%m-%d")
+
+        sys_msg = [{'role': 'system', 'content': ybtext.gpt_sys_msg[0].format(date)}]
+
+        if (time.time() - self.chat_ai_time[target] > dialogue_life) or re.search(ybtext.gpt_keyword[0], org): #清空对话缓存
+            self.chat_lst[target] = []
+
+        self.chat_lst[target].append({"role": usr_name, 'content': org})
+
+
+        self.chat_lst[target] = self.chat_lst[target][-20:]
+
+        client = openai.OpenAI(api_key=openai.api_key, base_url="https://api.deepseek.com")
+
+        lib.log(f"Now chat size: {len(self.chat_lst[target])}")
+
+        try:
+            node1 = time.time()
+            response = client.chat.completions.create(
+                model="deepseek-chat",
+                messages=sys_msg + self.chat_lst[target],
+                max_tokens=1024,
+                temperature=1,
+                stream=False
+            )
+            timecost = math.ceil(time.time() - node1)
+            lib.log(f'DeepSeek Response in {timecost}s')
+
+            gpt_msg = response.choices[0].message.content
+            self.chat_lst[target].append({"role": "assistant", "content": gpt_msg.strip()})
+                
+            lib.log(f'Now Conversation Usage:{response.usage.total_tokens}')
+                
+            asw = gpt_msg.strip()
+            if re.search(ybtext.gpt_keyword[0], org):
+                self.chat_lst[target] = []
         except Exception as e:
             lib.log(e)
             self.chat_lst[target].pop()
