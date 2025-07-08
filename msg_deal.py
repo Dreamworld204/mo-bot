@@ -1247,28 +1247,40 @@ class Message:
 
         self.chat_lst[target] = self.chat_lst[target][-20:]
 
-        client = openai.OpenAI(api_key=openai.api_key, base_url="https://api.deepseek.com")
+        url = "https://api.deepseek.com/chat/completions"
+        chatdata = json.dumps({
+            "messages": sys_msg + self.chat_lst[target],
+            "model": "deepseek-chat",
+            "frequency_penalty": 0,
+            "max_tokens": 1024,
+            "response_format": {
+                "type": "text"
+            },
+            "stop": None,
+            "stream": False,
+            "temperature": 1,
+            })
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'Authorization': f'Bearer {openai.api_key}'
+        }
 
         lib.log(f"Now chat size: {len(self.chat_lst[target])}")
 
         try:
             node1 = time.time()
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=sys_msg + self.chat_lst[target],
-                max_tokens=1024,
-                temperature=1,
-                stream=False
-            )
+            response = requests.request("POST", url, headers=headers, data=chatdata)
             timecost = math.ceil(time.time() - node1)
             lib.log(f'DeepSeek Response in {timecost}s')
 
-            gpt_msg = response.choices[0].message.content
-            self.chat_lst[target].append({"role": "assistant", "content": gpt_msg.strip()})
+            res = json.loads(response.text)
+            ds_msg = res['choices'][0]['message']['content']
+            self.chat_lst[target].append({"role": "assistant", "content": ds_msg.strip()})
                 
-            lib.log(f'Now Conversation Usage:{response.usage.total_tokens}')
+            lib.log(f'Now Conversation Usage:{res["usage"]["total_tokens"]}')
                 
-            asw = gpt_msg.strip()
+            asw = ds_msg.strip()
             if re.search(ybtext.gpt_keyword[0], org):
                 self.chat_lst[target] = []
         except Exception as e:
