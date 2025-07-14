@@ -1237,7 +1237,12 @@ class Message:
 
         date = time.strftime("%Y-%m-%d")
 
-        sys_msg = [{'role': 'system', 'content': ybtext.gpt_sys_msg[0].format(date)}]
+        if 'chatgpt' in self.config and 'tips' in self.config['chatgpt']:
+            systemword = self.config['chatgpt']['tips'] + \
+                '.' + ybtext.gpt_sys_msg[1].format(date)
+        else:
+            systemword = ybtext.gpt_sys_msg[0].format(date)
+        sys_msg = [{'role': 'system', 'content': systemword}]
 
         if (time.time() - self.chat_ai_time[target] > dialogue_life) or re.search(ybtext.gpt_keyword[0], org): #清空对话缓存
             self.chat_lst[target] = []

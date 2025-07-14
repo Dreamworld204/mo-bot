@@ -207,12 +207,12 @@ def register(user, password):
 
 def creatrandomstr(lenth=16):
     import secrets
-    # 生成一个长度为16的随机字符串
+    # 生成一个长度为16的随机字符串 
     random_key = secrets.token_hex(lenth)
     print(random_key)
 
 if __name__ == '__main__':
-    config = json.load(open("config.json"))
+    config = json.load(open("config.json", encoding = 'utf-8'))
     qm = msg.Message(config)
     fs = MFile(config)
     userdb = UserDB()
