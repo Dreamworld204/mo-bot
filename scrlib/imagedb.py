@@ -43,6 +43,9 @@ class ImgDB:
     def insert(self, filename, msg_type, sender, dt):
         self.execute("INSERT INTO sendlog (filename,type,send,dt) VALUES(?,?,?,?)",
                    (filename, msg_type, sender, dt, ))
+    def delete(self, filename, sender):
+        self.execute(
+            "DELETE FROM sendlog WHERE send=? AND filename=?", (sender, filename,))
         
     def addFavor(self, user, filename):
         self.execute(

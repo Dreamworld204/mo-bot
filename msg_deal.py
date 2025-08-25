@@ -35,7 +35,6 @@ class Message:
         if os.path.exists('tags.json'):
             self.map_tags = json.load(open('tags.json', encoding='utf-8'))
             self.map_tags.update(ybtext.map_tags)
-            #lib.log(self.map_tags)
         else:
             json.dump(ybtext.map_tags, open(
                 'tags.json', 'w', encoding='utf-8'))
@@ -131,6 +130,10 @@ class Message:
                 nextorder = f'{key}宽高比{strRatio}图*{remain - 1}'
         elif re.match('^收藏', msg):
             reply = self.setImgFavor(sid, msg)
+        elif re.match('^删除.*jpg', msg):
+            mt = re.search('删除[:：]?(.*\\.jpg)', msg)
+            filename = mt.group(1)
+            reply = self.deleteimg(sid, filename)
         elif re.match('^停+$', msg):
             self.stopimg = True
             reply = ybtext.msg_stop[0]
@@ -1092,6 +1095,25 @@ class Message:
                     lib.log("myurl_img:", myurl_img)
             return tmp_msg, False
         return "Error No Api", False
+    def deleteimg(self, id, message = ''):
+        send = str(id)
+        filename = message.replace(' ', '')
+        path = os.path.join(self.pic_path, filename) 
+        path_s = os.path.join(self.pic_path, "sample", filename)
+        path_p = os.path.join(self.pic_path, "preview", filename)
+        if os.path.exists(path):
+            os.remove(path)
+            print(f'删除文件{path}')
+        if os.path.exists(path_s):
+            os.remove(path_s)
+            print(f'删除文件{path_s}')
+        if os.path.exists(path_p):
+            os.remove(path_p)
+            print(f'删除文件{path_p}')
+        self.imgdb.delete(filename, send)
+        if send in self.oldimg_lst and filename in self.oldimg_lst[send]:
+            self.oldimg_lst[send].remove(filename)
+        return ybtext.msg_delete[0]
     def proxy_get(self, url, ):
         user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
                 'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'}
@@ -1263,7 +1285,7 @@ class Message:
             },
             "stop": None,
             "stream": False,
-            "temperature": 1,
+            "temperature": 1.3,
             })
         headers = {
             'Content-Type': 'application/json',
