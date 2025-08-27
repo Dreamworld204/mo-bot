@@ -1251,19 +1251,25 @@ class Message:
         if target not in self.chat_ai_time:
             self.chat_ai_time[target] = 0
         if target not in self.chat_lst:
-            self.chat_lst[target] = []
-        dialogue_life = 600
+            self.chat_lst[target] = [] 
         usr_name = 'user'
         asw = self.random_str(ybtext.gpt_connect_error)
         org = org.strip()
 
         date = time.strftime("%Y-%m-%d")
 
-        if 'chatgpt' in self.config and 'tips' in self.config['chatgpt']:
-            systemword = self.config['chatgpt']['tips'] + \
-                '.' + ybtext.gpt_sys_msg[1].format(date)
-        else:
-            systemword = ybtext.gpt_sys_msg[0].format(date)
+        #systemconfig
+        systemword = ybtext.gpt_sys_msg[0].format(date)
+        dialogue_limit = 40
+        dialogue_life = 600
+        if 'chatgpt' in self.config:
+            if 'tips' in self.config['chatgpt']:
+                systemword = self.config['chatgpt']['tips'] + \
+                    '.' + ybtext.gpt_sys_msg[1].format(date)
+            if 'sizelimit' in self.config['chatgpt']:
+                dialogue_limit = int(self.config['chatgpt']['sizelimit'])
+            if 'timelimit' in self.config['chatgpt']:
+                dialogue_life = int(self.config['chatgpt']['timelimit'])
         sys_msg = [{'role': 'system', 'content': systemword}]
 
         if (time.time() - self.chat_ai_time[target] > dialogue_life) or re.search(ybtext.gpt_keyword[0], org): #清空对话缓存
@@ -1272,7 +1278,7 @@ class Message:
         self.chat_lst[target].append({"role": usr_name, 'content': org})
 
 
-        self.chat_lst[target] = self.chat_lst[target][-20:]
+        self.chat_lst[target] = self.chat_lst[target][-dialogue_limit:]
 
         url = "https://api.deepseek.com/chat/completions"
         chatdata = json.dumps({
