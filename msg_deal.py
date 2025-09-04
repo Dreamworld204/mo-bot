@@ -479,7 +479,7 @@ class Message:
                 asw = asw + str(ndate) + '\n'
             time.sleep(1)
         if asw == '':
-            return ybtext.msg_notfind[2]
+            return ybtext.msg_notfind[3]
         else:
             return asw
     def liuyao(self, org) :
