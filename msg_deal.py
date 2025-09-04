@@ -231,7 +231,7 @@ class Message:
             hour = (int)(time.strftime("%H", target_time))
             # print(f'date_q:{date_q}, hour:{hour}')
         else:
-            return ybtext.msg_illegal[5]
+            return [ybtext.msg_illegal[5], ]
         if hour >= 23:
             date_q = time.strftime("%Y-%m-%d", time.localtime(time.mktime(
                 time.strptime(date_q, "%Y-%m-%d")) + (hour - 23 + 24) * 3600))
