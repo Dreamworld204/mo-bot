@@ -476,7 +476,9 @@ class Message:
             _, ifqmds, ndate = self.ganzhi('+' + str(i))
             # print(ifqmds)
             if ifqmds:
-                asw = asw + str(ndate) + '\n'
+                asw = asw + \
+                    '<span style="cursor:pointer;" onClick="coverInput(\'' + ybtext.msg_ganzhi[1] + str(ndate) + \
+                    '\')">' + str(ndate) + '</span>' + '\n'
             time.sleep(1)
         if asw == '':
             return ybtext.msg_notfind[3]
