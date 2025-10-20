@@ -627,8 +627,10 @@ class Message:
                 httpClient.close()
         return ret
     def translate_loop(self, org) -> str:
+        # lan_lst = ["en", "jp", "kor", "fra", "spa", "ara", "ru", "pt", "de", "it", 
+        #            "el", "nl", "pl", "bul", "est", "dan", "fin", "cs", "rom", "slo", "swe", "hu"]
         lan_lst = ["en", "jp", "kor", "fra", "spa", "ara", "ru", "pt", "de", "it", 
-                   "el", "nl", "pl", "bul", "est", "dan", "fin", "cs", "rom", "slo", "swe", "hu"]
+                    "el", "nl", "pl", "dan", "fin", "cs", "rom", "swe"]
         que = org
         lanFrom = "auto"
         asw = ""
