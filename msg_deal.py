@@ -29,15 +29,18 @@ class Message:
     def __init__(self, config={}):
         self.config = config
         if os.path.exists('jieqi.json'):
-            self.date_jieqi = json.load(open('jieqi.json'))
+            with open('jieqi.json', encoding='utf-8') as f:
+                self.date_jieqi = json.load(f)
         else:
-            json.dump(self.date_jieqi, open('jieqi.json', 'w'))
+            with open('jieqi.json', 'w', encoding='utf-8') as f:
+                json.dump(self.date_jieqi, f, ensure_ascii=False)
         if os.path.exists('tags.json'):
-            self.map_tags = json.load(open('tags.json', encoding='utf-8'))
+            with open('tags.json', encoding='utf-8') as f:
+                self.map_tags = json.load(f)
             self.map_tags.update(ybtext.map_tags)
         else:
-            json.dump(ybtext.map_tags, open(
-                'tags.json', 'w', encoding='utf-8'))
+            with open('tags.json', 'w', encoding='utf-8') as f:
+                json.dump(self.map_tags, f, ensure_ascii=False)
         # self.pic_path = "/home/sunjianpei/apache-tomcat-9.0.65/webapps/sumi/pic/"
         self.pic_path = "./static/pic/"
         lib.check_path(os.path.join(self.pic_path , "sample/"))
@@ -177,8 +180,9 @@ class Message:
         myurl = "http://api.tianapi.com/txapi/lunar/index"
         key = self.config['tianapi_key']
         while ct < 30:
-            if idate not in self.date_jieqi:
+            if idate not in self.date_jieqi or 'jieqi' not in self.date_jieqi[idate]:
                 iurl = myurl + '?key=' + key + '&date=' + idate
+                lib.log(f'urlopen:{iurl}')
                 f = urllib.request.urlopen(iurl, timeout=8)
 
                 result_all = f.read()
@@ -189,15 +193,19 @@ class Message:
                     break
                 else:
                     hllist = result['newslist'][0]
-                    self.date_jieqi[idate] = hllist['jieqi']
+                    self.date_jieqi[idate] = {'jieqi': hllist['jieqi'],
+                                              'gzyear': hllist['tiangandizhiyear'],
+                                              'gzmonth': hllist['tiangandizhimonth'],
+                                              'gzday': hllist['tiangandizhiday']}
                 time.sleep(1)
-            if self.date_jieqi[idate] != '':
-                jieqi = self.date_jieqi[idate]
+            if self.date_jieqi[idate]['jieqi'] != '':
+                jieqi = self.date_jieqi[idate]['jieqi']
                 break
             idate = time.strftime(
                     "%Y-%m-%d", time.localtime(time.mktime(time.strptime(idate, "%Y-%m-%d")) - 24 * 3600))
             ct += 1
-        json.dump(self.date_jieqi, open('jieqi.json', 'w'))
+        with open('jieqi.json', 'w', encoding='utf-8') as f:
+            json.dump(self.date_jieqi, f, ensure_ascii=False)
         return jieqi
 
     def ganzhi(self, org) -> str:
@@ -243,19 +251,30 @@ class Message:
         ifqmds = False
         ifbad = False
         try:
-            lib.log(turl)
-            f = urllib.request.urlopen(turl, timeout=8)
+            if date_q not in self.date_jieqi or 'gzyear' not in self.date_jieqi[date_q] or 'gzmonth'not in self.date_jieqi[date_q] or 'gzday' not in self.date_jieqi[date_q]:
+                lib.log(f'urlopen:{turl}')
+                f = urllib.request.urlopen(turl, timeout=8)
 
-            result_all = f.read()
-            result = json.loads(result_all)
-            if result['code'] != 200:
-                return ybtext.msg_illegal[5]
-            hllist = result['newslist'][0]
+                result_all = f.read()
+                result = json.loads(result_all)
+                if result['code'] != 200:
+                    lib.log(f'return err:{json.dumps(result, ensure_ascii=False)}')
+                    return [ybtext.msg_fail[4].format("日历"), ]
+                hllist = result['newslist'][0]
 
-            gzyear = hllist['tiangandizhiyear']
-            gzmonth = hllist['tiangandizhimonth']
-            gzday = hllist['tiangandizhiday']
-            self.date_jieqi[date_q] = hllist['jieqi']
+                gzyear = hllist['tiangandizhiyear']
+                gzmonth = hllist['tiangandizhimonth']
+                gzday = hllist['tiangandizhiday']
+                self.date_jieqi[date_q] = {'jieqi': hllist['jieqi'],
+                                        'gzyear': hllist['tiangandizhiyear'],
+                                        'gzmonth': hllist['tiangandizhimonth'],
+                                        'gzday': hllist['tiangandizhiday']}
+                with open('jieqi.json', 'w', encoding='utf-8') as f:
+                    json.dump(self.date_jieqi, f, ensure_ascii=False)
+                
+            gzyear = self.date_jieqi[date_q]['gzyear']
+            gzmonth = self.date_jieqi[date_q]['gzmonth']
+            gzday = self.date_jieqi[date_q]['gzday']
 
             gday2firstgz = {"甲": 0, "乙": 2, "丙": 4, "丁": 6,
                             "戊": 8, "己": 0, "庚": 2, "辛": 4, "壬": 6, "癸": 8}
@@ -269,6 +288,8 @@ class Message:
 
             # compute qimendunjia
             jieqi = self.getjieqi(date_q)
+            if jieqi == '':
+                return [ybtext.msg_fail[5],]
 
             tmp_dz = ybtext.dizhi.index(zday) - ybtext.tiangan.index(gday) % 5
             tmp_dz = tmp_dz if tmp_dz >= 0 else tmp_dz+12
@@ -1422,7 +1443,8 @@ class Message:
                 self.map_tags[key] = new_v
         else:
             self.map_tags[key] = value
-        json.dump(self.map_tags, open('tags.json', 'w', encoding='utf-8'))
+        with open('tags.json', 'w', encoding='utf-8') as f:
+            json.dump(self.map_tags, f, ensure_ascii=False)
         return ""
     def cast_as_eval(self, org) -> str:
         code = org.strip()
