@@ -12,6 +12,7 @@ import os
 import traceback
 import random
 import openai
+from openai import OpenAI
 import requests
 
 import scrlib.mlib as lib
@@ -168,8 +169,7 @@ class Message:
             org = mt.group(1)
             reply = self.cast_as_eval(org)
         elif self.config['chatgpt']['enable'] and not re.match("^\\s*$", msg):
-            # reply = self.chat_gpt(msg, id, 2)
-            reply = self.deepseek_chat(msg, id)
+            reply = self.qwen_chat(msg, id)
 
         return reply, nextorder
 
@@ -1346,6 +1346,88 @@ class Message:
             self.chat_lst[target].pop()
             if isinstance(e, socket.timeout):
                 asw = self.random_str(ybtext.msg_timeout)
+        if re.search(ybtext.gpt_keyword[1], org):
+            self.chat_ai_time[target] = 0
+        else:
+            self.chat_ai_time[target] = time.time()
+        return asw
+    
+    def qwen_chat(self, org, id) -> str:
+        target = id
+        if target not in self.chat_ai_time:
+            self.chat_ai_time[target] = 0
+        if target not in self.chat_lst:
+            self.chat_lst[target] = [] 
+        usr_name = 'user'
+        asw = self.random_str(ybtext.gpt_connect_error)
+        org = org.strip()
+
+        date = time.strftime("%Y-%m-%d")
+
+        #systemconfig
+        systemword = ybtext.gpt_sys_msg[0].format(date)
+        dialogue_limit = 40
+        dialogue_life = 600
+        if 'chatgpt' in self.config:
+            if 'tips' in self.config['chatgpt']:
+                systemword = self.config['chatgpt']['tips']
+            if 'sizelimit' in self.config['chatgpt']:
+                dialogue_limit = int(self.config['chatgpt']['sizelimit'])
+            if 'timelimit' in self.config['chatgpt']:
+                dialogue_life = int(self.config['chatgpt']['timelimit'])
+        sys_msg = [{'role': 'system', 'content': systemword}]
+
+        if (time.time() - self.chat_ai_time[target] > dialogue_life) or re.search(ybtext.gpt_keyword[0], org): #清空对话缓存
+            self.chat_lst[target] = []
+
+        self.chat_lst[target].append({"role": usr_name, 'content': org})
+
+
+        self.chat_lst[target] = self.chat_lst[target][-dialogue_limit:]
+
+
+        lib.log(f"Now chat size: {len(self.chat_lst[target])}")
+
+        try:
+            client = OpenAI(
+                api_key=openai.api_key,
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            )
+            completion = client.chat.completions.create(
+                model=self.config['chatgpt']['model'],
+                messages=sys_msg + self.chat_lst[target],
+                frequency_penalty=0,
+                max_tokens=1024,
+                response_format={
+                    "type": "text"
+                },
+                stop=None,
+                stream=False,
+                temperature=1.3,
+                extra_body={"enable_search": True, "enable_thinking": False},
+            )
+            node1 = time.time()
+            response = completion.model_dump_json()
+            timecost = math.ceil(time.time() - node1)
+            lib.log(f'Qwen Response in {timecost}s')
+
+            res = json.loads(response)
+
+            ds_msg = res['choices'][0]['message']['content']
+            self.chat_lst[target].append({"role": "assistant", "content": ds_msg.strip()})
+                
+            lib.log(f'Now Conversation Usage:{res["usage"]["total_tokens"]}')
+                
+            asw = ds_msg.strip()
+            if re.search(ybtext.gpt_keyword[0], org):
+                self.chat_lst[target] = []
+        except Exception as e:
+            lib.log(e)
+            self.chat_lst[target].pop()
+            if isinstance(e, socket.timeout):
+                asw = self.random_str(ybtext.msg_timeout)
+            else:
+                asw = ybtext.msg_bug[0]
         if re.search(ybtext.gpt_keyword[1], org):
             self.chat_ai_time[target] = 0
         else:
