@@ -55,8 +55,16 @@ class Message:
             self.oldimg_lst[one[2]].append(one[0])
         #print("oldimg_lst", self.oldimg_lst)
             
+        self.enable_search = False
+        self.enable_think = False
         if 'chatgpt' in config and config['chatgpt']['apikey']:
             openai.api_key = config['chatgpt']['apikey']
+            if 'enable_search' in config['chatgpt']:
+                self.enable_search = config['chatgpt']['enable_search']
+            if 'enable_thinking' in config['chatgpt']:
+                self.enable_think = config['chatgpt']['enable_thinking']
+        lib.log(self.enable_search, self.enable_think)
+
 
 
     def deal(self, msg, sid = '0', bUser = True) :
@@ -1393,6 +1401,7 @@ class Message:
                 api_key=openai.api_key,
                 base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
             )
+            node1 = time.time()
             completion = client.chat.completions.create(
                 model=self.config['chatgpt']['model'],
                 messages=sys_msg + self.chat_lst[target],
@@ -1404,9 +1413,8 @@ class Message:
                 stop=None,
                 stream=False,
                 temperature=1.3,
-                extra_body={"enable_search": True, "enable_thinking": False},
+                extra_body={"enable_search": self.enable_search, "enable_thinking": self.enable_think},
             )
-            node1 = time.time()
             response = completion.model_dump_json()
             timecost = math.ceil(time.time() - node1)
             lib.log(f'Qwen Response in {timecost}s')
