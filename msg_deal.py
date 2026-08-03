@@ -63,7 +63,6 @@ class Message:
                 self.enable_search = config['chatgpt']['enable_search']
             if 'enable_thinking' in config['chatgpt']:
                 self.enable_think = config['chatgpt']['enable_thinking']
-        lib.log(self.enable_search, self.enable_think)
 
 
 
@@ -986,7 +985,10 @@ class Message:
                                     if largesize:
                                         save_picture(sampleurl, path_s)
                                 if not os.path.isfile(path_p):
-                                    save_picture(preurl, path_p)
+                                    try:
+                                        save_picture(preurl, path_p)
+                                    except Exception as ei:
+                                        lib.log(f'Save preview fail')
                                 # 构造图片信息
                                 tmp_msg = {'type': "image", 'data': {'file': filename, 'url': os.path.join(self.pic_path, filename),
                                                                      'source': res['source'], 'delay': delay, 'size': file_size, 'tags': ','.join(list(tags)[:20])}}
@@ -1164,13 +1166,13 @@ class Message:
                 return response
             except MemoryError as me:
                 i += 5
-                lib.log(f'proxy get error: MemoryError')
+                lib.log(f'url({url}) get error: MemoryError')
                 raise MemoryError("HTTP Get Over Memory")
             except Exception as e:
                 i += 1
-                lib.log(f'proxy get error times {i}:\n{repr(e)}')
+                lib.log(f'url({url}) get error times {i}:\n{repr(e)}')
                 time.sleep(0.2)
-        raise Exception('Cannot connect to proxy')
+        raise Exception('Cannot get img by proxy_get function')
 
     def proxy_get_stream(self, url, ):
         user = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
@@ -1189,12 +1191,13 @@ class Message:
                 return response
             except MemoryError as me:
                 i += 5
-                lib.log(f'proxy get error: MemoryError')
+                lib.log(f'url({url}) get error: MemoryError')
                 raise MemoryError("HTTP Get Over Memory")
             except Exception as e:
                 i += 1
-                lib.log(f'proxy get error times {i}:\n{repr(e)}')
-        raise Exception('Cannot connect to proxy')
+                lib.log(f'url({url}) get error times {i}:\n{repr(e)}')
+                time.sleep(0.2)
+        raise Exception('Cannot get steam by proxy_get_stream function')
     
     chat_ai_time = {'0': 0}
     chat_lst = {}
