@@ -7,11 +7,11 @@ except ImportError:
     import scrlib.mlib as mlib
 
 map_yaobian = {0:"无变爻, 以本卦卦辞为根据",
-               1:"一爻变化, 以{}爻辞为根据",
-               2:"二爻变化, 以{}爻辞为根据,以上爻为主",
-               3:"三爻变化, 以本卦变卦卦辞为根据",
-               4:"四爻变化, 以变卦的{}爻为根据,以下爻为主",
-               5:"五爻变化, 以变卦的{}爻为根据",
+               1:"一爻变化, 以本卦的{}爻的爻辞为根据",
+               2:"二爻变化, 以本卦的{}爻的爻辞为根据,以上爻为主",
+               3:"三爻变化, 以本卦变卦的卦辞为根据",
+               4:"四爻变化, 以变卦的{}爻的爻辞为根据,以下爻为主",
+               5:"五爻变化, 以变卦的{}爻的爻辞为根据",
                6:"六爻变化, 以变卦卦辞为根据,乾坤卦以用九/用六为根据"}
 
 map_bagua = {0:'☷', 1:'☳', 2:'☵', 3:'☱', 4:'☶', 5:'☲', 6:'☴', 7:'☰'}
@@ -109,12 +109,16 @@ def yigua(seed = '') -> int:
     sRes += f'变卦: {map_bagua[bian_shang_i]} {map_bagua[bian_xia_i]} , <a href="https://www.baidu.com/s?wd={map_xiang.get(bian_xiang, " ")}卦" target="_blank">{map_xiang.get(bian_xiang, " ")}卦</a>第{map_menu.get(bian_xiang, 0)}\n'
 
     num_bian = len(bian_set)
-    sRes += f'{num_bian}爻变化: {bian_set}\n'
+    if num_bian > 0:
+        sRes += f'{num_bian}爻变化: {", ".join(f"{x}爻" for x in bian_set)}\n'
+    else:
+        sRes += f'无变爻\n'
     if num_bian <= 3:
-        sRes += map_yaobian[num_bian].format(bian_set) + '\n'
+        sRes += map_yaobian[num_bian].format(
+            ','.join(map(str, bian_set))) + '\n'
     else:
         yu_set = {1, 2, 3, 4, 5, 6} - bian_set
-        sRes += map_yaobian[num_bian].format(yu_set) + '\n'
+        sRes += map_yaobian[num_bian].format(','.join(map(str, yu_set))) + '\n'
     return sRes
     
 
